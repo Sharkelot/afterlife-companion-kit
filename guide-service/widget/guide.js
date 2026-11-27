@@ -19,9 +19,11 @@
   const script = document.currentScript;
   const SD = (script && script.dataset) || {};
   const WIDGET_BASE = new URL('.', (script && script.src) || location.href).href;
+  const VQ = (() => { try { return new URL((script && script.src) || location.href).search; } catch (e) { return ''; } })();   // ?v=<build> of guide.js, forwarded to the files it loads
   const API = (SD.api || new URL((script && script.src) || location.href, location.href).origin).replace(/\/$/, '');
   const reduceMq = matchMedia('(prefers-reduced-motion: reduce)');
   const reduced = () => reduceMq.matches;
+  const motionSafe = reduced;   // this build has only the OS reduced-motion preference (no ds SAFE/FULL switch)
 
   /* ---------- Theme tokens: five palette styles with dark and light variants ---------- */
   // [bg, surface, raised, text, body, label, border, primary, primaryText, secondaryText, tertiaryPop, tertiaryText, onPrimary]
@@ -52,23 +54,11 @@
   // focus = crop centre + zoom into the source image; mouth = overlay centre + width, as fractions of the image.
   // Tamsin ships as transparent WebP frames: avatars/tamsin/<style>-<mode>/<frame>.webp (theme-tinted, alpha cutouts)
   // plus avatars/tamsin/base/ (untinted). `hit` is the silhouette polygon (percent of the frame) used as the click area.
-  const TAMSIN_FRAMES = ['neutral', 'happy', 'joy', 'smirk', 'pout', 'laugh', 'surprised', 'blush', 'wink', 'thinking', 'sad', 'talk', 'blink',
-    'm-closed', 'm-A', 'm-I', 'm-E', 'm-O', 'm-U'];
+  const TAMSIN_FRAMES = ['neutral', 'happy', 'joy', 'smirk', 'pout', 'laugh', 'surprised', 'blush', 'wink', 'thinking', 'sad', 'talk', 'blink'];
   const AVATARS = {
-    'tamsin-rook': { name: 'Tamsin', role: 'Site guide', dir: 'avatars/tamsin', frames: TAMSIN_FRAMES, aspect: 1.0,
+    'tamsin-rook': { name: 'Tamsin', role: 'Site guide', dir: 'avatars/tamsin', frames: TAMSIN_FRAMES, mouth: 'avatars/tamsin/mouth', aspect: 1.0,
       alt: 'Tamsin Rook, punk netrunner with an indigo-violet bob and cybernetic arm',
       focus: { x: 0.5, y: 0.27, zoom: 2.6 }, hit: null, eyes: true },
-  };
-
-  /* ---------- Visemes: name -> [mouth open 0..1, width scale] ---------- */
-  const VIS = { sil: [0, 1], pp: [.04, .8], p: [.04, .8], b: [.04, .8], m: [.04, .8], ff: [.2, 1.1], f: [.2, 1.1], v: [.2, 1.1],
-    th: [.3, 1], dd: [.35, 1], d: [.35, 1], t: [.35, 1], kk: [.4, 1], k: [.4, 1], g: [.4, 1], ch: [.4, .7], sh: [.4, .65], j: [.4, .7],
-    ss: [.25, 1.25], s: [.25, 1.25], z: [.25, 1.25], nn: [.3, 1], n: [.3, 1], l: [.4, 1], rr: [.4, .8], r: [.4, .8],
-    aa: [1, 1.05], a: [1, 1.05], e: [.6, 1.3], ee: [.5, 1.4], ih: [.5, 1.2], i: [.5, 1.2], oh: [.85, .7], o: [.85, .7], ou: [.5, .55], oo: [.45, .5], u: [.45, .5], w: [.4, .5] };
-  const OCULUS = ['sil', 'pp', 'ff', 'th', 'dd', 'kk', 'ch', 'ss', 'nn', 'rr', 'aa', 'e', 'ih', 'oh', 'ou'];
-  const visShape = (v) => {
-    if (typeof v === 'number') v = OCULUS[v] || 'sil';
-    return VIS[String(v).toLowerCase()] || [.5, 1];
   };
 
   const EMOTIONS = { neutral: 'neutral', plain: 'neutral', happy: 'happy', warm: 'happy', joy: 'joy', laugh: 'laugh', laughing: 'laugh', angry: 'angry', annoyed: 'angry', pout: 'angry',
@@ -78,15 +68,9 @@
   // emotion tag -> expression frame (Tamsin's sheet)
   const EMO_FRAME = { neutral: 'neutral', happy: 'happy', joy: 'joy', laugh: 'laugh', angry: 'pout', tsundere: 'smirk', embarrassed: 'blush',
     surprised: 'surprised', sigh: 'sad', whisper: 'thinking', thinking: 'thinking', wink: 'wink' };
-  // viseme name -> mouth-shape frame (lip-sync set: closed, A, I, E, O, U)
-  const VIS_FRAME = { sil: 'm-closed', pp: 'm-closed', p: 'm-closed', b: 'm-closed', m: 'm-closed', ff: 'm-I', f: 'm-I', v: 'm-I', th: 'm-E', dd: 'm-E', d: 'm-E', t: 'm-E',
-    kk: 'm-E', k: 'm-E', g: 'm-E', ch: 'm-U', sh: 'm-U', j: 'm-U', ss: 'm-I', s: 'm-I', z: 'm-I', nn: 'm-E', n: 'm-E', l: 'm-E', rr: 'm-U', r: 'm-U',
-    aa: 'm-A', a: 'm-A', ah: 'm-A', e: 'm-E', eh: 'm-E', ee: 'm-I', ih: 'm-I', i: 'm-I', oh: 'm-O', o: 'm-O', ou: 'm-U', oo: 'm-U', u: 'm-U', w: 'm-U' };
-  const visFrame = (v) => {
-    if (typeof v === 'number') v = OCULUS[v] || 'sil';
-    return VIS_FRAME[String(v).toLowerCase()] || 'm-E';
-  };
+  // Lip-sync is mouth-only (lipsync.js): the expression frame stays put while small mouth sprites (avatars/tamsin/mouth/) cross-fade on top.
 
+  const L_KEYS = ['closed', 'A', 'I', 'E', 'O', 'U'];   // sprite order (matches lipsync.js KEYS)
   const stripTags = (s) => String(s).replace(/\[[a-z _-]{2,20}\]/gi, '').replace(/\s{2,}/g, ' ').trim();
   const sentences = (s) => (String(s).match(/[^.!?…]+[.!?…]+["')\]]*\s*|[^.!?…]+$/g) || []).map((x) => x.trim()).filter(Boolean);
   const sleep = (ms, signal) => new Promise((res, rej) => {
@@ -130,7 +114,19 @@ button.primary{background:var(--pri);color:var(--onPri);border-color:var(--pri);
 .figure{--rim:var(--priTx);position:fixed;right:max(-2.5vw,-36px);bottom:0;height:var(--fh);aspect-ratio:1000/1040;pointer-events:none;z-index:1;background:none;border:0;transform-origin:50% 100%;animation:bob 5.2s ease-in-out infinite;filter:drop-shadow(0 0 1.5px color-mix(in srgb,var(--rim) 85%,transparent)) drop-shadow(0 0 10px color-mix(in srgb,var(--rim) 38%,transparent)) drop-shadow(0 8px 14px rgb(0 0 0/.38))}
 .figure .frames{position:absolute;inset:0;pointer-events:none}
 .figure .fr{position:absolute;inset:0;visibility:hidden;pointer-events:none}
-.figure .fr.on{visibility:visible}
+/* the idle bob holds still while she talks: only the mouth moves */
+.figure[data-speaking="true"]{animation-play-state:paused}
+/* expression change = cross-fade: the new frame fades in over the old one (which stays solid underneath, so she never goes see-through) */
+.figure .fr.out{visibility:visible;z-index:1}
+.figure .fr.on{visibility:visible;z-index:2;animation:frIn var(--fade,180ms) ease-in-out}
+.figure .fr.on.cut{animation:none}
+@keyframes frIn{from{opacity:0}to{opacity:1}}
+/* lip-sync: the base frame is static; only this layer (sprites cross-faded by opacity, tiny scaleY / jaw offset) changes */
+.figure .mhost{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;transform-origin:51% 39.6%;will-change:transform,opacity}
+.figure .mouth{position:absolute;transform-origin:50% 15%;will-change:transform}
+.figure .mouth img,.figure .mp{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+.figure .mp{inset:auto;opacity:0;will-change:opacity}
+.figure .mouth img[data-k=closed]{opacity:1}
 .figure img{position:absolute;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none}
 .figure .fr>img,.figure .face{inset:0;width:100%;height:100%}
 /* head / body split (head-eye coordination): the head layer fades out under the chin, the body layer starts there; both are the same frame */
@@ -145,7 +141,6 @@ button.primary{background:var(--pri);color:var(--onPri);border-color:var(--pri);
 .figure .clip::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgb(30 20 50/.16),transparent 45%);pointer-events:none}
 .figure .hit{position:absolute;inset:0;pointer-events:none;cursor:pointer;background:transparent;-webkit-tap-highlight-color:transparent}
 .figure[data-emo=angry]{--rim:var(--pop)}.figure[data-emo=embarrassed]{--rim:var(--secTx)}.figure[data-emo=surprised]{--rim:var(--popTx)}.figure[data-emo=happy],.figure[data-emo=joy],.figure[data-emo=laugh]{--rim:var(--pri)}
-.figure[data-speaking=true]{filter:drop-shadow(0 0 2px var(--rim)) drop-shadow(0 0 16px color-mix(in srgb,var(--rim) 55%,transparent)) drop-shadow(0 8px 14px rgb(0 0 0/.38))}
 @keyframes bob{0%,100%{transform:translateY(0) scale(1,1)}50%{transform:translateY(-4px) scale(1.004,1.012)}}
 .panel{pointer-events:auto;z-index:3;position:fixed;right:calc(var(--fh,0px) * .96 * .66 + 4px);bottom:max(20px,env(safe-area-inset-bottom));width:clamp(250px,calc(100vw - var(--fh,0px) * .96 * .66 - 36px),360px);background:var(--surface);color:var(--body);border:1px solid var(--priTx);border-radius:18px 18px 6px 18px;box-shadow:0 16px 48px rgb(0 0 0/.38),0 0 22px color-mix(in srgb,var(--priTx) 22%,transparent)}
 .panel::after{content:"";position:absolute;right:-8px;bottom:36px;width:14px;height:14px;background:var(--surface);border:solid var(--priTx);border-width:1px 1px 0 0;transform:rotate(45deg)}
@@ -259,7 +254,7 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       this.speakGen = 0;
       this.tour = null;
       this.rec = null;
-      this.mouthState = { o: 0, w: 1 };
+      this.mouthState = null;
       this.prefs = { mute: store.get('mute', false), caps: store.get('caps', true), persona: SD.persona || store.get('persona', 'tsundere'),
         style: SD.style || store.get('style', 'prism-mint'), mode: SD.mode || store.get('mode', 'auto') };
     }
@@ -364,7 +359,9 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       this.$('frames').innerHTML = a.frames.map((f) => `<div class="fr" data-frame="${f}">${img(f, 'body')}<div class="hd">${img(f, 'face')}</div></div>`).join('');
       this.frameEls = {}; this.headEls = {}; this.$('frames').querySelectorAll('.fr').forEach((el) => { this.frameEls[el.dataset.frame] = el; this.headEls[el.dataset.frame] = el.querySelector('.hd'); });
       this.eyeRig = null; this.eyeGroups = {}; this.gzApplied = null;
+      this.lip = null; this.mouthSig = '';
       if (a.eyes) this.loadEyeRig(a);
+      if (a.mouth) this.loadMouth(a);
       const th = this.$('thumb');
       th.style.cssText = `--fx:${a.focus.x};--fy:${a.focus.y};--zoom:${a.focus.zoom}`;
       th.innerHTML = `<img src="${this.frameUrl(first, 'neutral')}" alt="" decoding="async" draggable="false">`;
@@ -377,27 +374,36 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       this.panel.setAttribute('aria-label', `${a.name}, ${a.role.toLowerCase()}`);
       this.$('who').textContent = `${a.name.toUpperCase()} // GUIDE`;
       fig.setAttribute('aria-label', a.alt);
-      this.curFrame = null; this.mouthFrame = null; this.blinkUntil = 0; this.pokeUntil = 0;
-      this.showFrame('neutral');
+      this.curFrame = null; this.blinkUntil = 0; this.pokeUntil = 0;
+      this.showFrame('neutral', true);
       this.scheduleBlink();
     }
 
-    // Pick the single visible frame: poke reaction > blink > lip-sync mouth > thinking status > emotion expression.
+    // Pick the single visible frame: poke reaction > blink > thinking status > emotion expression. (Lip-sync never swaps frames.)
     desiredFrame() {
       const now = performance.now();
       const fig = this.$('avatar');
       const emotion = fig.dataset.emo || 'neutral';
       if (now < this.pokeUntil) return 'blush';
-      if (this.mouthFrame && this.mouthFrame !== 'm-closed') return this.mouthFrame;
       const under = (this.$('status').dataset.s === 'thinking' && !this.speaking) ? 'thinking' : (EMO_FRAME[emotion] || 'neutral');
       // frames with the eye rig blink with their own lids (gaze engine); the others swap to the baked blink frame
-      if (now < this.blinkUntil && !reduced() && !(this.eyeRig && this.eyeRig.frames[under])) return 'blink';
+      // (the baked blink frame has no mouth layer, so it is skipped while she talks; rig frames still blink with their lids)
+      if (now < this.blinkUntil && !reduced() && !(this.mouthState && this.mouthState.active) && !(this.eyeRig && this.eyeRig.frames[under])) return 'blink';
       return under;
     }
-    showFrame(name) {
+    // `cut` = no fade (first paint, and the 130 ms baked blink); everything else cross-fades 180 ms.
+    showFrame(name, cut) {
       if (!this.frameEls || !this.frameEls[name] || this.curFrame === name) return;
-      if (this.curFrame && this.frameEls[this.curFrame]) this.frameEls[this.curFrame].classList.remove('on');
-      this.frameEls[name].classList.add('on'); this.curFrame = name;
+      cut = cut || name === 'blink' || this.curFrame === 'blink';
+      const prev = this.curFrame && this.frameEls[this.curFrame];
+      if (prev) {
+        prev.classList.remove('on', 'cut');
+        if (cut) prev.classList.remove('out');
+        else { prev.classList.add('out'); setTimeout(() => { if (!prev.classList.contains('on')) prev.classList.remove('out'); }, 230); }
+      }
+      const el = this.frameEls[name];
+      el.classList.remove('out'); el.classList.toggle('cut', !!cut); void el.offsetWidth;   // restart the fade-in animation
+      el.classList.add('on'); this.curFrame = name;
       this.gzApplied = null; this.gzHead = null;   // the new frame's head group / eyes get the current pose on the next gaze step
     }
     updateFrame() { this.showFrame(this.desiredFrame()); }
@@ -415,15 +421,67 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       setTimeout(() => this.updateFrame(), 1350);
     }
 
+    /* ----- mouth layer: static expression frame + cross-faded mouth sprites (maths in lipsync.js) ----- */
+    loadLipLib() {
+      if (window.AfterlifeLipsync) return Promise.resolve(window.AfterlifeLipsync);
+      if (!this._lipLib) this._lipLib = new Promise((res, rej) => { const s = document.createElement('script'); s.src = new URL('lipsync.js', WIDGET_BASE).href + VQ; s.onload = () => res(window.AfterlifeLipsync); s.onerror = rej; document.head.appendChild(s); });
+      return this._lipLib;
+    }
+    loadMouth(a) {
+      const base = `${a.mouth}/`, url = (rel) => new URL(base + rel, WIDGET_BASE).href;
+      Promise.all([fetch(url('mouth.json') + VQ).then((r) => r.json()), this.loadLipLib()]).then(([m, L]) => {
+        if (this.avatar !== a || !m || !m.sprites || !this.frameEls) return;
+        const pc = (x, y) => `${(x / m.frame[0] * 100).toFixed(3)}%;top:${(y / m.frame[1] * 100).toFixed(3)}%`;
+        const box = (b) => `left:${pc(b[0], b[1])};width:${(b[2] / m.frame[0] * 100).toFixed(3)}%;height:${(b[3] / m.frame[1] * 100).toFixed(3)}%`;
+        // per-expression skin patch: paints the expression's own mouth out while she talks (lives inside the frame, so it cross-fades with it)
+        this.mouthPatch = [];
+        for (const [f, p] of Object.entries(m.patches || {})) {
+          const hd = this.headEls[f]; if (!hd) continue;
+          hd.insertAdjacentHTML('beforeend', `<img class="mp" src="${url(p.file)}${VQ}" alt="" style="${box(p.box)}" decoding="async" draggable="false">`);
+          this.mouthPatch.push(hd.lastElementChild);
+        }
+        // the six vowel sprites live in ONE layer above every frame, so an expression change mid-sentence never drops the mouth
+        const imgs = L.KEYS.map((k) => `<img data-k="${k}" src="${url(m.sprites[k].file)}${VQ}" alt="" decoding="async" draggable="false">`).join('');
+        this.$('frames').insertAdjacentHTML('beforeend', `<div class="mhost" data-role="mhost"><div class="mouth" style="${box(m.box)}">${imgs}</div></div>`);
+        this.mhost = this.$('mhost'); this.mouthEl = this.mhost.querySelector('.mouth');
+        this.mouthImgs = {}; this.mouthEl.querySelectorAll('img').forEach((im) => { this.mouthImgs[im.dataset.k] = im; });
+        this.L = L; this.lip = new L.Lipsync({ reduced: motionSafe }); this.gzHead = null;
+      }).catch(() => { /* no mouth sprites: she simply does not lip-sync */ });
+    }
+    // Apply a Lipsync state to the DOM. Only the mouth layer is touched; writes happen only when something visibly changed.
+    applyMouth(st) {
+      this.mouthState = st;
+      const sig = `${st.patch.toFixed(3)}|${L_KEYS.map((k) => st.weights[k].toFixed(3)).join(',')}|${st.scaleY.toFixed(3)}|${st.jawPx.toFixed(2)}`;
+      if (sig === this.mouthSig) return; this.mouthSig = sig;
+      const op = this.L.stackOpacities(st.weights);
+      this.mhost.style.opacity = st.patch.toFixed(3);
+      for (const im of this.mouthPatch) im.style.opacity = st.patch.toFixed(3);
+      for (const k of L_KEYS) if (k !== 'closed') this.mouthImgs[k].style.opacity = op[k].toFixed(3);
+      this.mouthEl.style.transform = `translate3d(0,${st.jawPx.toFixed(2)}px,0) scaleY(${st.scaleY.toFixed(3)})`;
+    }
+    mouthStep(now) {
+      const ls = this.lip; if (!ls) return;
+      const tl = this.timeline; let t = null, amp = null;
+      if (tl) {
+        t = tl.clock();
+        if (tl._w !== tl.words || tl._v !== tl.visemes) {        // (re)build the viseme timeline: server visemes if any, else letters -> vowels over the word timings
+          tl._w = tl.words; tl._v = tl.visemes;
+          ls.setTimeline(this.L.smoothVisemes(this.L.hasShapeVisemes(tl.visemes) ? tl.visemes : this.L.visemesFromWords(tl.words)));
+        }
+        if (tl.amp && !this.prefs.mute) amp = this.amplitude();   // muted: the analyser reads silence, so the visemes alone drive the opening
+      }
+      this.applyMouth(ls.update(t, now, amp));
+    }
+
     /* ----- eye rig: gaze, saccades, lids, head-eye coordination (maths in gaze.js) ----- */
     eyeUrl(key, spec) { const [kind, frame, side] = spec.split('|'); return new URL(`${this.avatar.dir}/eyes/${key}/${frame}-${side}-${kind}.webp`, WIDGET_BASE).href; }
     loadGazeLib() {
       if (window.AfterlifeGaze) return Promise.resolve(window.AfterlifeGaze);
-      if (!this._gazeLib) this._gazeLib = new Promise((res, rej) => { const s = document.createElement('script'); s.src = new URL('gaze.js', WIDGET_BASE).href; s.onload = () => res(window.AfterlifeGaze); s.onerror = rej; document.head.appendChild(s); });
+      if (!this._gazeLib) this._gazeLib = new Promise((res, rej) => { const s = document.createElement('script'); s.src = new URL('gaze.js', WIDGET_BASE).href + VQ; s.onload = () => res(window.AfterlifeGaze); s.onerror = rej; document.head.appendChild(s); });
       return this._gazeLib;
     }
     loadEyeRig(a) {
-      Promise.all([fetch(new URL(`${a.dir}/eyes/eyes.json`, WIDGET_BASE).href).then((r) => r.json()), this.loadGazeLib()]).then(([rig, G]) => {
+      Promise.all([fetch(new URL(`${a.dir}/eyes/eyes.json`, WIDGET_BASE).href + VQ).then((r) => r.json()), this.loadGazeLib()]).then(([rig, G]) => {
         if (this.avatar !== a || !rig || !rig.frames) return;
         this.G = G; this.eyeRig = rig; this.buildEyes(a, rig);
         this.gazeEngine = new G.GazeEngine({ reduced });
@@ -506,7 +564,7 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       this.gzBusy = st.moving || st.blink > 0 || Math.abs(st.head.rot) > 0.02;
       // head-eye coordination: the head group (hair, face, eyes) turns toward far targets; neck and body stay put
       const hd = this.headEls[this.curFrame], ht = `translate3d(${st.head.tx.toFixed(2)}px,${st.head.ty.toFixed(2)}px,0) rotate(${st.head.rot.toFixed(2)}deg)`;
-      if (hd && this.gzHead !== ht) { hd.style.transform = ht; this.gzHead = ht; }
+      if (hd && this.gzHead !== ht) { hd.style.transform = ht; if (this.mhost) this.mhost.style.transform = ht; this.gzHead = ht; }
       const grp = this.eyeGroups[this.curFrame]; if (!grp || !this.eyeRig.frames[this.curFrame]) return;
       const O = G.OPTS, parts = [];
       for (const k of ['L', 'R']) {
@@ -723,7 +781,7 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       this.playing = null; this.setSpeaking(false); this.tourTimer && clearTimeout(this.tourTimer);
     }
     setSpeaking(v) {
-      this.speaking = v; this.$('avatar').dataset.speaking = String(v); if (!v) { this.mouthFrame = null; this.updateFrame(); }
+      this.speaking = v; this.$('avatar').dataset.speaking = String(v); if (!v) this.updateFrame();
       if (!v) { this.$('caps').textContent = ''; this.timeline = null; }
       if (v) this.setStatus('speaking'); else if (this.$('status').dataset.s === 'speaking') this.setStatus('idle');
     }
@@ -832,33 +890,17 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       this.capSpans = c.querySelectorAll('.w');
     }
 
-    /* ----- mouth animation: visemes > amplitude (gated by word timings) > synthetic ----- */
+    /* ----- animation loop: gaze + mouth layer + caption highlight ----- */
     loop() {
       requestAnimationFrame(this.loop);
       if (!this.frameEls || this.panel.hidden || document.hidden) return;
       this.gazeStep(performance.now());
-      let o = 0, vf = null; const tl = this.timeline;
-      if (tl) {
-        const t = tl.clock();
-        const inWord = tl.words.findIndex((x) => t >= x.start && t < x.end);
+      const tl = this.timeline, now = performance.now();
+      if (tl) {   // caption highlight follows the speech clock
+        const t = tl.clock(), inWord = tl.words.findIndex((x) => t >= x.start && t < x.end);
         if (this.capSpans) this.capSpans.forEach((sp, i) => sp.classList.toggle('on', i === inWord));
-        if (tl.visemes && tl.visemes.length) {
-          const v = tl.visemes.find((x) => t >= x.start && t < x.end); if (v) { vf = visFrame(v.v); o = visShape(v.v)[0]; }
-        } else if (tl.amp) {
-          o = this.amplitude(); if (tl.words.length && inWord < 0) o *= 0.15;
-        } else if (inWord >= 0) {
-          const ph = (t - tl.words[inWord].start) * 9; o = 0.35 + 0.55 * Math.abs(Math.sin(ph + inWord));
-        }
-        if (!vf) {
-          // amplitude / synthetic: choose the mouth shape by opening, rotating the mid shapes per word so it doesn't strobe
-          const k = Math.max(0, inWord) % 3;
-          vf = o < 0.16 ? 'm-closed' : o < 0.38 ? ['m-U', 'm-I', 'm-E'][k] : o < 0.68 ? ['m-E', 'm-O', 'm-I'][k] : ['m-A', 'm-O', 'm-A'][k];
-        }
-      } else vf = null;
-      const ms = this.mouthState; const now = performance.now();
-      if (reduced() && vf) vf = o < 0.2 ? 'm-closed' : 'm-A'; // reduced motion: only closed / open
-      // hold each mouth frame >= 70ms so fast visemes read as speech rather than flicker
-      if (vf !== this.mouthFrame && now - (ms.t || 0) >= (reduced() ? 150 : 70)) { this.mouthFrame = vf; ms.t = now; this.updateFrame(); }
+      }
+      this.mouthStep(now);
     }
 
     // The head bubble must never sit on the host page's own fixed bottom bar (mobile tab bars): measure it and lift above it.

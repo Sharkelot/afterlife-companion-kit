@@ -5,7 +5,7 @@ PYTHON ?= python3
 check: lint test
 	$(PYTHON) -m compileall -q guide-service tools
 	@if command -v node >/dev/null 2>&1; then node --check guide-service/widget/guide.js; else echo 'node not installed; skipped JS syntax check'; fi
-	@if command -v node >/dev/null 2>&1; then node --test guide-service/widget/tests/gaze.test.js; else echo 'node not installed; skipped gaze tests'; fi
+	@if command -v node >/dev/null 2>&1; then node --test guide-service/widget/tests/gaze.test.js guide-service/widget/tests/lipsync.test.js; else echo "node not installed; skipped widget tests"; fi
 	git diff --check
 
 lint:
