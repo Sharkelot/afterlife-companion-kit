@@ -87,7 +87,7 @@ guide-service/
 tools/concept/
   character.yaml               # editable character definition
   generate_krea2.py            # ComfyUI API workflow helper
-docs/                          # installation, architecture, art, desktop status
+docs/                          # installation, architecture, art, eye tracking, desktop status
 ```
 
 ## License

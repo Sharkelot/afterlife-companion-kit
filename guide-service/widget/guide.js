@@ -4,7 +4,7 @@
  *   data-api        API origin (default: origin the script was loaded from)
  *   data-tour       URL of a tour JSON file (default: <widget>/tours/tours.json)
  *   data-tour-site  force a site key from the tour file (default: match location.hostname)
- *   data-avatar     avatar id (default tamsin-rook); data-avatar-src / -focus="x,y,zoom" / -mouth="x,y,w"
+ *   data-avatar     avatar id (default tamsin-rook); data-avatar-focus="x,y,zoom" (launcher head crop)
  *   data-style      prism-mint | signal-coral | neon-magenta | acid-volt | holo-violet
  *   data-mode       auto | dark | light
  *   data-persona    tsundere | plain
@@ -49,10 +49,14 @@
 
   /* ---------- Avatar registry (swappable) ---------- */
   // focus = crop centre + zoom into the source image; mouth = overlay centre + width, as fractions of the image.
+  // Tamsin ships as transparent WebP frames: avatars/tamsin/<style>-<mode>/<frame>.webp (theme-tinted, alpha cutouts)
+  // plus avatars/tamsin/base/ (untinted). `hit` is the silhouette polygon (percent of the frame) used as the click area.
+  const TAMSIN_FRAMES = ['neutral', 'happy', 'joy', 'smirk', 'pout', 'laugh', 'surprised', 'blush', 'wink', 'thinking', 'sad', 'talk', 'blink',
+    'm-closed', 'm-A', 'm-I', 'm-E', 'm-O', 'm-U'];
   const AVATARS = {
-    'tamsin-rook': { name: 'Tamsin Rook', role: 'Site guide', src: 'avatars/tamsin-rook.png',
-      alt: 'Tamsin Rook, punk cyberpunk netrunner site guide',
-      focus: { x: 0.50, y: 0.10, zoom: 5.0 }, mouth: { x: 0.50, y: 0.105, w: 0.07 } },
+    'tamsin-rook': { name: 'Tamsin', role: 'Site guide', dir: 'avatars/tamsin', frames: TAMSIN_FRAMES, aspect: 1.0,
+      alt: 'Tamsin Rook, punk netrunner with an indigo-violet bob and cybernetic arm',
+      focus: { x: 0.5, y: 0.27, zoom: 2.6 }, hit: null, eyes: true },
   };
 
   /* ---------- Visemes: name -> [mouth open 0..1, width scale] ---------- */
@@ -66,9 +70,21 @@
     return VIS[String(v).toLowerCase()] || [.5, 1];
   };
 
-  const EMOTIONS = { neutral: 'neutral', happy: 'happy', angry: 'angry', tsundere: 'angry', embarrassed: 'embarrassed', flustered: 'embarrassed',
-    surprised: 'surprised', sigh: 'sigh', whisper: 'whisper', sad: 'sigh', laugh: 'happy' };
+  const EMOTIONS = { neutral: 'neutral', plain: 'neutral', happy: 'happy', warm: 'happy', joy: 'joy', laugh: 'laugh', laughing: 'laugh', angry: 'angry', annoyed: 'angry', pout: 'angry',
+    tsundere: 'tsundere', smirk: 'tsundere', teasing: 'tsundere', embarrassed: 'embarrassed', flustered: 'embarrassed', blush: 'embarrassed',
+    surprised: 'surprised', shock: 'surprised', sigh: 'sigh', sad: 'sigh', whisper: 'whisper', thinking: 'thinking', wink: 'wink' };
   const emo = (e) => EMOTIONS[String(e || '').toLowerCase()] || 'neutral';
+  // emotion tag -> expression frame (Tamsin's sheet)
+  const EMO_FRAME = { neutral: 'neutral', happy: 'happy', joy: 'joy', laugh: 'laugh', angry: 'pout', tsundere: 'smirk', embarrassed: 'blush',
+    surprised: 'surprised', sigh: 'sad', whisper: 'thinking', thinking: 'thinking', wink: 'wink' };
+  // viseme name -> mouth-shape frame (lip-sync set: closed, A, I, E, O, U)
+  const VIS_FRAME = { sil: 'm-closed', pp: 'm-closed', p: 'm-closed', b: 'm-closed', m: 'm-closed', ff: 'm-I', f: 'm-I', v: 'm-I', th: 'm-E', dd: 'm-E', d: 'm-E', t: 'm-E',
+    kk: 'm-E', k: 'm-E', g: 'm-E', ch: 'm-U', sh: 'm-U', j: 'm-U', ss: 'm-I', s: 'm-I', z: 'm-I', nn: 'm-E', n: 'm-E', l: 'm-E', rr: 'm-U', r: 'm-U',
+    aa: 'm-A', a: 'm-A', ah: 'm-A', e: 'm-E', eh: 'm-E', ee: 'm-I', ih: 'm-I', i: 'm-I', oh: 'm-O', o: 'm-O', ou: 'm-U', oo: 'm-U', u: 'm-U', w: 'm-U' };
+  const visFrame = (v) => {
+    if (typeof v === 'number') v = OCULUS[v] || 'sil';
+    return VIS_FRAME[String(v).toLowerCase()] || 'm-E';
+  };
 
   const stripTags = (s) => String(s).replace(/\[[a-z _-]{2,20}\]/gi, '').replace(/\s{2,}/g, ' ').trim();
   const sentences = (s) => (String(s).match(/[^.!?…]+[.!?…]+["')\]]*\s*|[^.!?…]+$/g) || []).map((x) => x.trim()).filter(Boolean);
@@ -96,7 +112,7 @@
 
   /* ---------- Styles ---------- */
   const css = () => `
-:host{all:initial;display:block;position:fixed;inset:auto 0 0 auto;z-index:2147483000;font:16px/1.5 "IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--text)}
+:host{all:initial;display:block;position:fixed;inset:auto 0 0 auto;width:0;height:0;--fh:clamp(280px,46vh,440px);pointer-events:none;z-index:2147483000;font:16px/1.5 "IBM Plex Sans","Segoe UI",system-ui,sans-serif;color:var(--text)}
 ${Object.keys(T).map((s) => ['dark', 'light'].map((m) => `:host([data-style="${s}"][data-resolved="${m}"]){${themeVars(s, m)};color-scheme:${m}}`).join('\n')).join('\n')}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -107,10 +123,32 @@ button:hover{border-color:var(--priTx);box-shadow:0 0 14px color-mix(in srgb,var
 button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--text);outline-offset:2px;box-shadow:0 0 0 5px var(--bg)}
 button[aria-pressed="true"]{background:color-mix(in srgb,var(--priTx) 20%,var(--surface));border-color:var(--priTx)}
 button.primary{background:var(--pri);color:var(--onPri);border-color:var(--pri);font-weight:700}
-.launcher{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));width:64px;height:64px;padding:0;border-radius:50%;border:2px solid var(--priTx);background:var(--surface);overflow:hidden;box-shadow:0 8px 28px rgb(0 0 0/.35)}
+.launcher{pointer-events:auto;position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--bar,0px));width:64px;height:64px;padding:0;border-radius:50%;border:2px solid var(--priTx);background:var(--surface);overflow:hidden;box-shadow:0 8px 28px rgb(0 0 0/.35),0 0 18px color-mix(in srgb,var(--priTx) 35%,transparent)}
 .launcher .avatar{width:100%;border-radius:0;border:0;clip-path:none}
 .launcher .dot{position:absolute;right:4px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--pop);border:2px solid var(--surface)}
-.panel{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));width:min(400px,calc(100vw - 32px));max-height:min(720px,calc(100dvh - 32px));overflow:auto;background:var(--surface);color:var(--body);border:1px solid var(--priTx);border-radius:18px 18px 18px 6px;box-shadow:0 20px 70px rgb(0 0 0/.45);display:flex;flex-direction:column}
+.figure{--rim:var(--priTx);position:fixed;right:max(-2.5vw,-36px);bottom:0;height:var(--fh);aspect-ratio:1000/1040;pointer-events:none;z-index:1;background:none;border:0;transform-origin:50% 100%;animation:bob 5.2s ease-in-out infinite;filter:drop-shadow(0 0 1.5px color-mix(in srgb,var(--rim) 85%,transparent)) drop-shadow(0 0 10px color-mix(in srgb,var(--rim) 38%,transparent)) drop-shadow(0 8px 14px rgb(0 0 0/.38))}
+.figure .frames{position:absolute;inset:0;pointer-events:none}
+.figure .fr{position:absolute;inset:0;visibility:hidden;pointer-events:none}
+.figure .fr.on{visibility:visible}
+.figure img{position:absolute;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none}
+.figure .fr>img,.figure .face{inset:0;width:100%;height:100%}
+/* head / body split (head-eye coordination): the head layer fades out under the chin, the body layer starts there; both are the same frame */
+.figure .body{-webkit-mask-image:linear-gradient(to bottom,transparent 39.04%,#000 39.04%);mask-image:linear-gradient(to bottom,transparent 39.04%,#000 39.04%)}
+.figure .face{-webkit-mask-image:linear-gradient(to bottom,#000 39.04%,transparent 40%);mask-image:linear-gradient(to bottom,#000 39.04%,transparent 40%)}
+.figure .gz{-webkit-mask-size:100% 100%;mask-size:100% 100%}
+.figure .hd{position:absolute;inset:0;transform-origin:51% 39.6%;will-change:transform}
+/* eyes: sclera mask clips the iris+pupil, lids sit above; only transforms are animated */
+.figure .eye,.figure .ir{position:absolute;inset:0}
+.figure .clip{position:absolute;-webkit-mask-size:100% 100%;mask-size:100% 100%}
+.figure .ir{will-change:transform}.figure .lid{will-change:transform}
+.figure .clip::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgb(30 20 50/.16),transparent 45%);pointer-events:none}
+.figure .hit{position:absolute;inset:0;pointer-events:none;cursor:pointer;background:transparent;-webkit-tap-highlight-color:transparent}
+.figure[data-emo=angry]{--rim:var(--pop)}.figure[data-emo=embarrassed]{--rim:var(--secTx)}.figure[data-emo=surprised]{--rim:var(--popTx)}.figure[data-emo=happy],.figure[data-emo=joy],.figure[data-emo=laugh]{--rim:var(--pri)}
+.figure[data-speaking=true]{filter:drop-shadow(0 0 2px var(--rim)) drop-shadow(0 0 16px color-mix(in srgb,var(--rim) 55%,transparent)) drop-shadow(0 8px 14px rgb(0 0 0/.38))}
+@keyframes bob{0%,100%{transform:translateY(0) scale(1,1)}50%{transform:translateY(-4px) scale(1.004,1.012)}}
+.panel{pointer-events:auto;z-index:3;position:fixed;right:calc(var(--fh,0px) * .96 * .66 + 4px);bottom:max(20px,env(safe-area-inset-bottom));width:clamp(250px,calc(100vw - var(--fh,0px) * .96 * .66 - 36px),360px);background:var(--surface);color:var(--body);border:1px solid var(--priTx);border-radius:18px 18px 6px 18px;box-shadow:0 16px 48px rgb(0 0 0/.38),0 0 22px color-mix(in srgb,var(--priTx) 22%,transparent)}
+.panel::after{content:"";position:absolute;right:-8px;bottom:36px;width:14px;height:14px;background:var(--surface);border:solid var(--priTx);border-width:1px 1px 0 0;transform:rotate(45deg)}
+.inner{display:flex;flex-direction:column;max-height:min(560px,calc(100dvh - 48px));overflow:auto;border-radius:inherit}
 .head{display:flex;align-items:center;gap:10px;padding:10px 10px 0 14px;font:600 .72rem "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.12em;color:var(--label)}
 .head b{color:var(--priTx);font-weight:700}
 .head .grow{flex:1}
@@ -120,17 +158,10 @@ button.primary{background:var(--pri);color:var(--onPri);border-color:var(--pri);
 .chip[data-s=thinking] i{background:var(--secTx)}
 .chip[data-s=idle] i{background:var(--priTx)}
 .mock{color:var(--popTx);border-color:var(--popTx)}
-.stage{display:grid;grid-template-columns:112px 1fr;gap:12px;padding:12px 14px;align-items:start}
-.avatar{--fx:.5;--fy:.5;--zoom:1;--mx:.5;--my:.5;--mw:.05;position:relative;aspect-ratio:1;overflow:hidden;border:2px solid var(--priTx);background:var(--raised);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));border-radius:4px}
+.stage{display:block;padding:12px 14px}
+.avatar{--fx:.5;--fy:.5;--zoom:1;position:relative;aspect-ratio:1;overflow:hidden;background:var(--raised)}
 .avatar img{position:absolute;max-width:none;width:calc(var(--zoom)*100%);left:calc(50% - var(--fx)*var(--zoom)*100%);top:calc(50% - var(--fy)*var(--zoom)*100%);user-select:none;pointer-events:none}
-.avatar .mouth{position:absolute;left:calc(50% + (var(--mx) - var(--fx))*var(--zoom)*100%);top:calc(50% + (var(--my) - var(--fy))*var(--zoom)*100%);width:calc(var(--mw)*var(--zoom)*100%);aspect-ratio:2/1;transform:translate(-50%,-50%);overflow:visible;pointer-events:none}
-.avatar::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 22px var(--emo,transparent)}
-.avatar[data-emo=happy]{--emo:color-mix(in srgb,var(--priTx) 55%,transparent)}
-.avatar[data-emo=angry]{--emo:color-mix(in srgb,var(--pop) 70%,transparent)}
-.avatar[data-emo=embarrassed]{--emo:color-mix(in srgb,var(--secTx) 65%,transparent)}
-.avatar[data-emo=surprised]{--emo:color-mix(in srgb,var(--popTx) 60%,transparent)}
-.avatar[data-speaking=true]{border-color:var(--pop)}
-.bubble{position:relative;min-height:112px;max-height:190px;overflow:auto;background:var(--raised);border:1px solid var(--border);border-radius:4px 14px 14px 14px;padding:10px 12px;color:var(--text);font-size:.95rem}
+.bubble{position:relative;min-height:72px;max-height:190px;overflow:auto;background:var(--raised);border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--text);font-size:.95rem}
 .bubble p{margin:0;white-space:pre-wrap}
 .bubble .who{display:block;font:700 .66rem "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.13em;color:var(--priTx);margin-bottom:4px}
 .bubble .you{color:var(--label);font-size:.82rem;margin-bottom:6px}
@@ -159,12 +190,18 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
 .ring::after{right:-6px;bottom:-6px;border-left:0;border-top:0}
 .ring[data-miss=true]{display:none}
 @media(max-width:480px){
-  .panel{right:8px;left:8px;bottom:8px;width:auto;max-height:calc(100dvh - 16px);border-radius:16px 16px 6px 6px}
-  .stage{grid-template-columns:88px 1fr;gap:10px;padding:10px}
-  .bubble{min-height:88px;max-height:140px;font-size:.9rem}
-  .bar{padding:8px 10px 0}.ask{padding:8px 10px 0}.caps{margin:8px 10px 0}.tourbar{margin:8px 10px 0}details.set{margin:8px 10px 10px}
+  :host{--fh:clamp(150px,24vh,210px)}
+  .figure{right:-8px;bottom:calc(var(--sheet,0px) + var(--bar,0px) - 3px)}
+  .panel{right:0;left:0;bottom:var(--bar,0px);width:auto;border-radius:16px 16px 0 0;border-width:1px 0 0}
+  .panel::after{display:none}
+  .inner{max-height:44dvh}
+  .stage{padding:8px 10px}
+  .head{gap:6px;padding:6px 6px 0 10px;flex-wrap:nowrap}.head b{white-space:nowrap;font-size:.62rem;letter-spacing:.08em}.chip{padding:1px 7px;white-space:nowrap}
+  details.set{display:none}.panel[data-tour=on] .tourbar{margin:6px 10px 0}
+  .bubble{min-height:64px;max-height:120px;font-size:.9rem}
+  .bar{padding:8px 10px 0}.ask{padding:8px 10px calc(10px + env(safe-area-inset-bottom))}.caps{margin:8px 10px 0}.tourbar{margin:8px 10px 0}details.set{margin:8px 10px 10px}
   .head{padding-left:10px}
-  .launcher{right:12px;bottom:12px}
+  .launcher{right:12px;bottom:calc(12px + var(--bar,0px))}
   .panel[data-tour=on] .bar,.panel[data-tour=on] .ask,.panel[data-tour=on] details.set,.panel[data-tour=on] .caps{display:none}
   .panel[data-tour=on] .stage{padding-bottom:0}
 }
@@ -175,13 +212,12 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
 <button class="launcher" part="launcher" aria-label="Open the site guide" aria-expanded="false" aria-haspopup="dialog">
   <span class="avatar" data-role="thumb"></span><span class="dot" aria-hidden="true"></span>
 </button>
-<section class="panel" role="dialog" aria-label="Site guide" hidden>
+<section class="panel" role="dialog" aria-label="Site guide" hidden><div class="inner">
   <div class="head"><b>\u25C6 AFTERLIFE HIGH</b><span class="grow"></span>
     <span class="chip mock" data-role="mock" hidden>Mock API</span>
     <span class="chip" data-role="status" data-s="idle" role="status"><i></i><span data-role="statustx">Idle</span></span>
-    <button data-act="close" aria-label="Close guide" title="Close (Esc)">\u2715</button></div>
+    <button data-act="close" aria-label="Minimise guide" title="Minimise (Esc)">\u2715</button></div>
   <div class="stage">
-    <div class="avatar" data-role="avatar" data-emo="neutral" data-speaking="false"><slot name="avatar"></slot></div>
     <div class="bubble"><span class="who" data-role="who"></span><p class="you" data-role="you" hidden></p><p data-role="say"></p></div>
   </div>
   <div class="caps" data-role="caps" aria-hidden="true"></div>
@@ -203,7 +239,8 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
     <label for="sty">Style</label><select id="sty" data-set="style"></select>
     <label for="mod">Mode</label><select id="mod" data-set="mode"><option value="auto">Auto</option><option value="dark">Dark</option><option value="light">Light</option></select></div></details>
   <div class="sr" role="log" aria-live="polite" data-role="log"></div>
-</section>
+</div></section>
+<div class="figure" data-role="avatar" data-emo="neutral" data-speaking="false" role="img" hidden><div class="frames" data-role="frames"></div><div class="hit" data-role="hit" aria-hidden="true"></div></div>
 <div class="ring" data-role="ring" data-miss="true" aria-hidden="true"></div>`;
 
   /* ---------- The element ---------- */
@@ -243,72 +280,250 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       root.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b) this.act(b.dataset.act, b, e); });
       this.launcher.addEventListener('click', () => this.open());
       root.querySelector('[data-role="form"]').addEventListener('submit', (e) => { e.preventDefault(); const i = e.target.q; const v = i.value.trim(); if (v) { i.value = ''; this.ask(v); } });
-      root.querySelectorAll('[data-set]').forEach((s) => s.addEventListener('change', () => { this.prefs[s.dataset.set] = s.value; store.set(s.dataset.set, s.value); this.applyTheme(); }));
+      root.querySelectorAll('[data-set]').forEach((s) => s.addEventListener('change', () => { this.prefs[s.dataset.set] = s.value; store.set(s.dataset.set, s.value); if (s.dataset.set === 'style') store.set('styleUser', true); this.applyTheme(); }));
       this.panel.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); this.tour ? this.stopTour() : this.close(); } });
       this.bindMic(root.querySelector('[data-act="mic"]'));
       this.applyTheme();
       this.syncButtons();
-      this.setSay(this.greeting(), 'neutral');
+      this.setSay(this.greeting(), this.prefs.persona === 'plain' ? 'neutral' : 'tsundere');
       this.mo = new MutationObserver(() => this.applyTheme());
       this.mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-mode', 'class'] });
       matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => this.applyTheme());
-      addEventListener('resize', () => this.placeRing());
+      addEventListener('resize', () => { this.placeRing(); this.measureBar(); });
+      this.measureBar(); setTimeout(() => this.measureBar(), 700); addEventListener('load', () => this.measureBar());
       addEventListener('scroll', () => this.placeRing(), { passive: true });
       this.loop = this.loop.bind(this);
+      this.initGaze();
       requestAnimationFrame(this.loop);
       this.resumeTour();
       if (SD.open === '1' || this.hasAttribute('open')) this.open();
     }
 
-    disconnectedCallback() { this.mo && this.mo.disconnect(); this.stopSpeech(); }
+    disconnectedCallback() { this.mo && this.mo.disconnect(); this.stopSpeech(); this.stopGaze(); }
 
     greeting() { return this.prefs.persona === 'plain' ? 'Hi, I\u2019m your site guide. Ask about this site, or take the tour.' : 'Hmph. Fine, I\u2019ll show you around. It\u2019s not like I was waiting or anything.'; }
 
     /* ----- theme & avatar ----- */
+    // Tamsin is a stack of transparent WebP frames (expressions, lip-sync mouth shapes, blink). Every frame exists
+    // pre-tinted per theme (avatars/tamsin/<style>-<mode>/<frame>.webp, colour-blend of hair tips / neon trim /
+    // circuit + eye glow only), so a theme change is a src swap of the whole stack. Untinted art is avatars/tamsin/base/.
+    avatarSrcFor(style, mode) {
+      const a = this.avatar;
+      if (!a || !a.dir) return null;
+      return `${a.dir}/${style}-${mode}`;
+    }
+    frameUrl(dir, frame) { return new URL(`${dir}/${frame}.webp`, WIDGET_BASE).href; }
+    swapAvatarImg(dir) {
+      if (!this.avatar || this._dir === dir) return;
+      this._dir = dir;
+      const a = this.avatar;
+      // Preload the whole stack for this theme, then flip src in one go so the swap never shows a half-tinted frame.
+      const key = dir.split('/').pop();
+      const urls = a.frames.map((f) => this.frameUrl(dir, f));
+      this.eyeKey = key;
+      this.shadow.querySelectorAll('.figure img[data-ey]').forEach((img) => urls.push(this.eyeUrl(key, img.dataset.ey)));
+      Promise.all(urls.map((u) => new Promise((res) => { const im = new Image(); im.onload = im.onerror = () => res(); im.src = u; })))
+        .then(() => {
+          if (this._dir !== dir) return;
+          this.shadow.querySelectorAll('.figure img[data-img]').forEach((img) => { img.src = this.frameUrl(dir, img.dataset.img); });
+          this.shadow.querySelectorAll('.figure img[data-ey]').forEach((img) => { img.src = this.eyeUrl(key, img.dataset.ey); });
+          const th = this.shadow.querySelector('.avatar img'); if (th) th.src = this.frameUrl(dir, 'neutral');
+        });
+    }
     applyTheme() {
+      const de = document.documentElement;
+      // Follow the host site's own theme token (<html data-theme="prism-mint">) unless the visitor picked a style in the widget.
+      const siteStyle = T[de.dataset.theme] ? de.dataset.theme : null;
       let style = T[this.prefs.style] ? this.prefs.style : 'prism-mint';
+      if (siteStyle && !SD.style && !store.get('styleUser', false)) style = siteStyle;
       let mode = this.prefs.mode;
       if (mode === 'auto') {
-        const de = document.documentElement;
         const hint = de.dataset.mode || (['dark', 'light'].includes(de.dataset.theme) ? de.dataset.theme : '') || (de.classList.contains('dark') ? 'dark' : de.classList.contains('light') ? 'light' : '');
         mode = ['dark', 'light'].includes(hint) ? hint : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
       }
       this.setAttribute('data-style', style);
       this.setAttribute('data-resolved', mode);
+      this.applyPupil();
+      const dir = this.avatarSrcFor(style, mode);
+      if (dir) this.swapAvatarImg(dir);
     }
 
     setAvatar(id, def) {
       if (def) AVATARS[id] = def;
       const a = Object.assign({}, AVATARS[id] || AVATARS['tamsin-rook']);
-      if (SD.avatarSrc) a.src = SD.avatarSrc;
       const nums = (s) => String(s).split(',').map(Number);
       if (SD.avatarFocus) { const [x, y, zoom] = nums(SD.avatarFocus); a.focus = { x, y, zoom }; }
-      if (SD.avatarMouth) { const [x, y, w] = nums(SD.avatarMouth); a.mouth = { x, y, w }; }
       this.avatar = a;
-      this._tintCache = {};
-      this._tintRel = null;
-      const src = new URL(a.src, WIDGET_BASE).href;
-      const mk = (withMouth) => `<img src="${this._tintRel ? new URL(this._tintRel, WIDGET_BASE).href : src}" alt="" decoding="async" draggable="false">${withMouth ? MOUTH_SVG : ''}`;
-      const apply = (el, withMouth) => {
-        const f = a.focus, m = a.mouth;
-        el.style.cssText = `--fx:${f.x};--fy:${f.y};--zoom:${f.zoom};--mx:${m.x};--my:${m.y};--mw:${m.w}`;
-        el.querySelectorAll('img,svg').forEach((n) => n.remove());
-        el.insertAdjacentHTML('afterbegin', mk(withMouth));
-      };
-      apply(this.$('avatar'), true);
-      apply(this.$('thumb'), false);
+      this._dir = null;
+      const fig = this.$('avatar');
+      const first = `${a.dir}/base`;
+      // First paint uses the untinted base so she is never missing; applyTheme() swaps in the themed stack.
+      // every frame = body layer + head group (head layer, plus the eye rig on frames whose eyes are open); same art, split at the chin
+      const img = (f, cls) => `<img class="${cls}" data-img="${f}" src="${this.frameUrl(first, f)}" alt="" decoding="async" draggable="false">`;
+      this.$('frames').innerHTML = a.frames.map((f) => `<div class="fr" data-frame="${f}">${img(f, 'body')}<div class="hd">${img(f, 'face')}</div></div>`).join('');
+      this.frameEls = {}; this.headEls = {}; this.$('frames').querySelectorAll('.fr').forEach((el) => { this.frameEls[el.dataset.frame] = el; this.headEls[el.dataset.frame] = el.querySelector('.hd'); });
+      this.eyeRig = null; this.eyeGroups = {}; this.gzApplied = null;
+      if (a.eyes) this.loadEyeRig(a);
+      const th = this.$('thumb');
+      th.style.cssText = `--fx:${a.focus.x};--fy:${a.focus.y};--zoom:${a.focus.zoom}`;
+      th.innerHTML = `<img src="${this.frameUrl(first, 'neutral')}" alt="" decoding="async" draggable="false">`;
+      const hit = this.$('hit');
+      // Click area = her silhouette only (polygon from the neutral frame's alpha); until it loads nothing is clickable.
+      const setHit = (poly) => { hit.style.clipPath = `polygon(${poly.map((p) => `${p[0]}% ${p[1]}%`).join(',')})`; hit.style.pointerEvents = 'auto'; };
+      if (a.hit) setHit(a.hit);
+      else fetch(new URL(`${a.dir}/hit.json`, WIDGET_BASE).href).then((r) => r.json()).then((poly) => { if (Array.isArray(poly) && poly.length > 8) setHit(poly); }).catch(() => {});
+      hit.addEventListener('click', () => this.poke());
       this.panel.setAttribute('aria-label', `${a.name}, ${a.role.toLowerCase()}`);
       this.$('who').textContent = `${a.name.toUpperCase()} // GUIDE`;
-      this.$('avatar').setAttribute('role', 'img');
-      this.$('avatar').setAttribute('aria-label', a.alt);
-      this.mouthEl = this.$('avatar').querySelector('.m-in');
-      this.lipEl = this.$('avatar').querySelector('.m-lip');
-      this.mouthSvg = this.$('avatar').querySelector('svg');
+      fig.setAttribute('aria-label', a.alt);
+      this.curFrame = null; this.mouthFrame = null; this.blinkUntil = 0; this.pokeUntil = 0;
+      this.showFrame('neutral');
+      this.scheduleBlink();
+    }
+
+    // Pick the single visible frame: poke reaction > blink > lip-sync mouth > thinking status > emotion expression.
+    desiredFrame() {
+      const now = performance.now();
+      const fig = this.$('avatar');
+      const emotion = fig.dataset.emo || 'neutral';
+      if (now < this.pokeUntil) return 'blush';
+      if (this.mouthFrame && this.mouthFrame !== 'm-closed') return this.mouthFrame;
+      const under = (this.$('status').dataset.s === 'thinking' && !this.speaking) ? 'thinking' : (EMO_FRAME[emotion] || 'neutral');
+      // frames with the eye rig blink with their own lids (gaze engine); the others swap to the baked blink frame
+      if (now < this.blinkUntil && !reduced() && !(this.eyeRig && this.eyeRig.frames[under])) return 'blink';
+      return under;
+    }
+    showFrame(name) {
+      if (!this.frameEls || !this.frameEls[name] || this.curFrame === name) return;
+      if (this.curFrame && this.frameEls[this.curFrame]) this.frameEls[this.curFrame].classList.remove('on');
+      this.frameEls[name].classList.add('on'); this.curFrame = name;
+      this.gzApplied = null; this.gzHead = null;   // the new frame's head group / eyes get the current pose on the next gaze step
+    }
+    updateFrame() { this.showFrame(this.desiredFrame()); }
+    scheduleBlink() {
+      clearTimeout(this.blinkTimer);
+      if (reduced()) return;
+      this.blinkTimer = setTimeout(() => {
+        this.blinkUntil = performance.now() + 130; this.updateFrame();
+        setTimeout(() => this.updateFrame(), 150);
+        this.scheduleBlink();
+      }, 2200 + Math.random() * 3600);
+    }
+    poke() {
+      this.pokeUntil = performance.now() + 1300; this.updateFrame();
+      setTimeout(() => this.updateFrame(), 1350);
+    }
+
+    /* ----- eye rig: gaze, saccades, lids, head-eye coordination (maths in gaze.js) ----- */
+    eyeUrl(key, spec) { const [kind, frame, side] = spec.split('|'); return new URL(`${this.avatar.dir}/eyes/${key}/${frame}-${side}-${kind}.webp`, WIDGET_BASE).href; }
+    loadGazeLib() {
+      if (window.AfterlifeGaze) return Promise.resolve(window.AfterlifeGaze);
+      if (!this._gazeLib) this._gazeLib = new Promise((res, rej) => { const s = document.createElement('script'); s.src = new URL('gaze.js', WIDGET_BASE).href; s.onload = () => res(window.AfterlifeGaze); s.onerror = rej; document.head.appendChild(s); });
+      return this._gazeLib;
+    }
+    loadEyeRig(a) {
+      Promise.all([fetch(new URL(`${a.dir}/eyes/eyes.json`, WIDGET_BASE).href).then((r) => r.json()), this.loadGazeLib()]).then(([rig, G]) => {
+        if (this.avatar !== a || !rig || !rig.frames) return;
+        this.G = G; this.eyeRig = rig; this.buildEyes(a, rig);
+        this.gazeEngine = new G.GazeEngine({ reduced });
+        this.gazeDir = new G.GazeDirector();
+        this.updateFrame();
+      }).catch(() => { /* no eye rig: the baked eyes simply stay */ });
+    }
+    buildEyes(a, rig) {
+      const key = this._dir ? this._dir.split('/').pop() : 'base';
+      const px = (x) => `${(x / rig.frame[0] * 100).toFixed(3)}%`, py = (y) => `${(y / rig.frame[1] * 100).toFixed(3)}%`;
+      const box = (b) => `left:${px(b[0])};top:${py(b[1])};width:${px(b[2])};height:${py(b[3])}`;
+      const url = (rel) => new URL(`${a.dir}/eyes/${rel}`, WIDGET_BASE).href;
+      // head / body split masks for every frame (collar belongs to the body, neck fade, eyes punched out of the head layer)
+      for (const f of rig.masks || []) {
+        const el = this.frameEls[f]; if (!el) continue;
+        const set = (img, file) => { const u = `url(${url(`${f}/${file}`)})`; img.classList.add('gz'); img.style.cssText = `-webkit-mask-image:${u};mask-image:${u}`; };
+        set(el.querySelector('.body'), 'body-mask.webp'); set(this.headEls[f].querySelector('.face'), 'head-mask.webp');
+      }
+      for (const [f, eyes] of Object.entries(rig.frames)) {
+        const hd = this.headEls[f]; if (!hd) continue;
+        let html = '';
+        for (const side of ['L', 'R']) {
+          const e = eyes[side], sc = e.sclera, rel = (b) => `left:${((b[0] - sc[0]) / sc[2] * 100).toFixed(3)}%;top:${((b[1] - sc[1]) / sc[3] * 100).toFixed(3)}%;width:${(b[2] / sc[2] * 100).toFixed(3)}%;height:${(b[3] / sc[3] * 100).toFixed(3)}%`;
+          const m = url(`${f}/${side}-sclera.webp`);
+          html += `<div class="eye" data-side="${side}"><div class="clip" style="${box(sc)};-webkit-mask-image:url(${m});mask-image:url(${m})"><img src="${m}" alt="" style="inset:0;width:100%;height:100%" decoding="async" draggable="false">`
+            + `<div class="ir"><img data-ey="iris|${f}|${side}" src="${this.eyeUrl(key, `iris|${f}|${side}`)}" alt="" style="${rel(e.iris)}" decoding="async" draggable="false">`
+            + `<img class="pup" src="${url(`${f}/${side}-pupil.webp`)}" alt="" style="${rel(e.pupil)}" decoding="async" draggable="false"></div></div>`
+            + `<img class="lid lo" data-ey="lid-low|${f}|${side}" src="${this.eyeUrl(key, `lid-low|${f}|${side}`)}" alt="" style="${box(e.lid)};width:${px(e.lid[2])};height:${py(e.lid[3])}" decoding="async" draggable="false">`
+            + `<img class="lid up" data-ey="lid-up|${f}|${side}" src="${this.eyeUrl(key, `lid-up|${f}|${side}`)}" alt="" style="${box(e.lid)}" decoding="async" draggable="false"></div>`;
+        }
+        hd.insertAdjacentHTML('beforeend', html);
+        const g = {};
+        hd.querySelectorAll('.eye').forEach((el) => { g[el.dataset.side] = { ir: el.querySelector('.ir'), pup: el.querySelector('.pup'), up: el.querySelector('.lid.up'), lo: el.querySelector('.lid.lo') }; });
+        this.eyeGroups[f] = g;
+      }
+      this.applyPupil();
+    }
+    applyPupil() {
+      if (!this.G) return;
+      const s = this.G.pupilScale(this.getAttribute('data-resolved'));
+      for (const g of Object.values(this.eyeGroups)) for (const e of Object.values(g)) e.pup.style.transform = `scale(${s})`;
+    }
+    initGaze() {
+      this.gzLast = null; this.gzTs = 0; this.inView = true; this.gzPx = { x: 0, y: 0 };
+      const stamp = (x, y, kind) => { this.gzLast = { t: performance.now(), x, y, kind }; };
+      // passive listeners; no layout reads in handlers
+      addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch') stamp(e.clientX, e.clientY, 'pointer'); }, { passive: true });
+      addEventListener('pointerdown', (e) => stamp(e.clientX, e.clientY, e.pointerType === 'touch' ? 'tap' : 'pointer'), { passive: true });
+      document.addEventListener('focusin', (e) => {
+        const t = e.composedPath && e.composedPath()[0]; if (!t || !t.getBoundingClientRect || t === document.body || t === document.documentElement) return;
+        const r = t.getBoundingClientRect(); stamp(r.left + r.width / 2, r.top + r.height / 2, 'focus');
+      }, true);
+      const measure = () => { const f = this.$('avatar'); if (!f.hidden) { this.figRect = f.getBoundingClientRect(); } this.bubbleC = this.panel && !this.panel.hidden ? (() => { const r = this.panel.getBoundingClientRect(); return { x: r.left + r.width * 0.5, y: r.top + Math.min(r.height * 0.4, 140) }; })() : null; };
+      this.gazeMeasure = measure;
+      addEventListener('resize', measure);
+      if (window.ResizeObserver) { this._gro = new ResizeObserver(measure); this._gro.observe(this.$('avatar')); this._gro.observe(this.panel); }
+      // off-screen = paused
+      if (window.IntersectionObserver) { this._gio = new IntersectionObserver((en) => { this.inView = en[en.length - 1].isIntersecting; }); this._gio.observe(this.$('avatar')); }
+      document.addEventListener('visibilitychange', () => { this.gzTs = 0; });
+    }
+    stopGaze() { this._gro && this._gro.disconnect(); this._gio && this._gio.disconnect(); }
+    hlCenter(now) {
+      if (!this.hlEl || !this.hlEl.isConnected) return null;
+      if (!this._hlT || now - this._hlT > 300) { this._hlT = now; const r = this.hlEl.getBoundingClientRect(); this._hlC = r.width || r.height ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; }
+      return this._hlC;
+    }
+    gazeStep(now) {
+      const G = this.G, fig = this.$('avatar');
+      if (!G || !this.gazeEngine || fig.hidden || !this.inView || !this.figRect) return;
+      const e = this.gazeEngine, calm = !this.gzBusy;
+      if (now - this.gzTs < (calm ? 30 : 15)) return;     // ~60 fps while moving, ~30 fps while only micro-jitter
+      this.gzTs = now;
+      const rect = this.figRect, s = rect.width / this.eyeRig.frame[0];
+      const fr = this.eyeRig.frames[this.curFrame] || this.eyeRig.frames.neutral;
+      const ctr = (k) => ({ x: rect.left + fr[k].rest[0] * s, y: rect.top + fr[k].rest[1] * s });
+      const eyes = { L: ctr('L'), R: ctr('R') };
+      const viewer = { x: (eyes.L.x + eyes.R.x) / 2, y: (eyes.L.y + eyes.R.y) / 2 };
+      const tgt = this.gazeDir.pick({ now, speaking: !!this.speaking, last: this.gzLast, viewer, bubble: this.bubbleC, highlight: this.speaking ? this.hlCenter(now) : null });
+      const st = e.update(now, G.gaze(eyes, tgt));
+      this.gzBusy = st.moving || st.blink > 0 || Math.abs(st.head.rot) > 0.02;
+      // head-eye coordination: the head group (hair, face, eyes) turns toward far targets; neck and body stay put
+      const hd = this.headEls[this.curFrame], ht = `translate3d(${st.head.tx.toFixed(2)}px,${st.head.ty.toFixed(2)}px,0) rotate(${st.head.rot.toFixed(2)}deg)`;
+      if (hd && this.gzHead !== ht) { hd.style.transform = ht; this.gzHead = ht; }
+      const grp = this.eyeGroups[this.curFrame]; if (!grp || !this.eyeRig.frames[this.curFrame]) return;
+      const O = G.OPTS, parts = [];
+      for (const k of ['L', 'R']) {
+        const ed = fr[k], c = st[k], lid = G.lidOffsets(c.ny, st.blink, ed.open_h);
+        const dx = c.nx * O.ax * ed.w * s, dy = c.ny * O.ay * ed.open_h * s;
+        parts.push(dx.toFixed(2), dy.toFixed(2), lid.up.toFixed(2), lid.low.toFixed(2));
+      }
+      const sig = parts.join(','); if (sig === this.gzApplied) return; this.gzApplied = sig;
+      ['L', 'R'].forEach((k, i) => {
+        const g = grp[k], [dx, dy, up, low] = parts.slice(i * 4, i * 4 + 4);
+        g.ir.style.transform = `translate3d(${dx}px,${dy}px,0)`;
+        g.up.style.transform = `translate3d(0,${(up * s).toFixed(2)}px,0)`; g.lo.style.transform = `translate3d(0,${(low * s).toFixed(2)}px,0)`;
+      });
     }
 
     /* ----- panel ----- */
     open() {
-      this.panel.hidden = false; this.launcher.hidden = true;
+      this.panel.hidden = false; this.launcher.hidden = true; this.$('avatar').hidden = false; this.measureSheet(); this.updateFrame(); this.gazeMeasure && this.gazeMeasure();
       this.launcher.setAttribute('aria-expanded', 'true');
       this.ensureCtx();
       this.detect();
@@ -316,7 +531,7 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
     }
     close() {
       this.stopSpeech(); this.stopRec(true);
-      this.panel.hidden = true; this.launcher.hidden = false;
+      this.panel.hidden = true; this.launcher.hidden = false; this.$('avatar').hidden = true;
       this.launcher.setAttribute('aria-expanded', 'false');
       this.launcher.focus({ preventScroll: true });
     }
@@ -327,7 +542,8 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
     setSay(text, emotion, you) {
       this.$('say').textContent = text;
       const y = this.$('you'); y.hidden = !you; y.textContent = you ? `You: ${you}` : '';
-      this.$('avatar').dataset.emo = emo(emotion);
+      // while she is speaking the emotion follows the sentence being played (set in playItem), not the text that has streamed in
+      if (!this.speaking) { this.$('avatar').dataset.emo = emo(emotion); this.updateFrame(); }
       const b = this.$('say').parentElement; b.scrollTop = b.scrollHeight;
     }
     announce(t) { const l = this.$('log'); const p = document.createElement('p'); p.textContent = t; l.appendChild(p); while (l.children.length > 6) l.firstChild.remove(); }
@@ -384,7 +600,7 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       this.announce(`You: ${message}`);
       let full = '', emotion = 'neutral', sentCount = 0, spokenChars = 0;
       const onText = (d) => { full += d; this.setSay(stripTags(full), emotion, message); };
-      const onSentence = (text, e, token) => { emotion = e || emotion; sentCount++; spokenChars += text.length; this.$('avatar').dataset.emo = emo(emotion); this.enqueue(text, e, token); };
+      const onSentence = (text, e, token) => { emotion = e || emotion; sentCount++; spokenChars += text.length; if (!this.speaking && !this.q.length) { this.$('avatar').dataset.emo = emo(emotion); this.updateFrame(); } this.enqueue(text, e, token); };
       try {
         let done = false;
         if (this.caps.chat !== false && this.caps.chatStream !== false) {
@@ -472,7 +688,7 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       this.playing = null; this.setSpeaking(false); this.tourTimer && clearTimeout(this.tourTimer);
     }
     setSpeaking(v) {
-      this.speaking = v; this.$('avatar').dataset.speaking = String(v);
+      this.speaking = v; this.$('avatar').dataset.speaking = String(v); if (!v) { this.mouthFrame = null; this.updateFrame(); }
       if (!v) { this.$('caps').textContent = ''; this.timeline = null; }
       if (v) this.setStatus('speaking'); else if (this.$('status').dataset.s === 'speaking') this.setStatus('idle');
     }
@@ -521,7 +737,7 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
     }
 
     async playItem(it, gen) {
-      this.playing = it; this.setSpeaking(true); this.$('avatar').dataset.emo = it.emotion;
+      this.playing = it; this.setSpeaking(true); this.$('avatar').dataset.emo = it.emotion; this.updateFrame();
       let audio = null;
       if (!this.prefs.mute && !this.mock && it.audio) audio = await it.audio;
       if (gen !== this.speakGen) return;
@@ -584,27 +800,53 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
     /* ----- mouth animation: visemes > amplitude (gated by word timings) > synthetic ----- */
     loop() {
       requestAnimationFrame(this.loop);
-      if (!this.mouthSvg || this.panel.hidden) return;
-      let o = 0, w = 1; const tl = this.timeline;
+      if (!this.frameEls || this.panel.hidden || document.hidden) return;
+      this.gazeStep(performance.now());
+      let o = 0, vf = null; const tl = this.timeline;
       if (tl) {
         const t = tl.clock();
         const inWord = tl.words.findIndex((x) => t >= x.start && t < x.end);
-        if (this.capSpans) this.capSpans.forEach((s, i) => s.classList.toggle('on', i === inWord));
+        if (this.capSpans) this.capSpans.forEach((sp, i) => sp.classList.toggle('on', i === inWord));
         if (tl.visemes && tl.visemes.length) {
-          const v = tl.visemes.find((x) => t >= x.start && t < x.end); if (v) [o, w] = visShape(v.v);
+          const v = tl.visemes.find((x) => t >= x.start && t < x.end); if (v) { vf = visFrame(v.v); o = visShape(v.v)[0]; }
         } else if (tl.amp) {
-          o = this.amplitude(); if (tl.words.length && inWord < 0) o *= 0.15; w = 1;
+          o = this.amplitude(); if (tl.words.length && inWord < 0) o *= 0.15;
         } else if (inWord >= 0) {
-          const ph = (t - tl.words[inWord].start) * 9; o = 0.35 + 0.55 * Math.abs(Math.sin(ph + inWord)); w = 1 + 0.25 * Math.sin(ph * 0.7);
+          const ph = (t - tl.words[inWord].start) * 9; o = 0.35 + 0.55 * Math.abs(Math.sin(ph + inWord));
         }
+        if (!vf) {
+          // amplitude / synthetic: choose the mouth shape by opening, rotating the mid shapes per word so it doesn't strobe
+          const k = Math.max(0, inWord) % 3;
+          vf = o < 0.16 ? 'm-closed' : o < 0.38 ? ['m-U', 'm-I', 'm-E'][k] : o < 0.68 ? ['m-E', 'm-O', 'm-I'][k] : ['m-A', 'm-O', 'm-A'][k];
+        }
+      } else vf = null;
+      const ms = this.mouthState; const now = performance.now();
+      if (reduced() && vf) vf = o < 0.2 ? 'm-closed' : 'm-A'; // reduced motion: only closed / open
+      // hold each mouth frame >= 70ms so fast visemes read as speech rather than flicker
+      if (vf !== this.mouthFrame && now - (ms.t || 0) >= (reduced() ? 150 : 70)) { this.mouthFrame = vf; ms.t = now; this.updateFrame(); }
+    }
+
+    // The head bubble must never sit on the host page's own fixed bottom bar (mobile tab bars): measure it and lift above it.
+    measureBar() {
+      let off = 0; const vh = innerHeight, vw = innerWidth;
+      for (const el of document.body.querySelectorAll(':scope > *, :scope > * > *')) {
+        if (el === this) continue;
+        const cs = getComputedStyle(el);
+        if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
+        const r = el.getBoundingClientRect();
+        if (r.height > 0 && r.height <= 140 && r.width >= vw * 0.8 && r.bottom >= vh - 2 && r.top > vh * 0.5) off = Math.max(off, Math.round(vh - r.top));
       }
-      const ms = this.mouthState;
-      if (reduced()) { o = o < 0.2 ? 0 : o < 0.6 ? 0.5 : 1; ms.o = o; ms.w = 1; }
-      else { ms.o += (o - ms.o) * (o > ms.o ? 0.55 : 0.3); ms.w += (w - ms.w) * 0.35; }
-      const ry = 1 + ms.o * 11, rx = 14 * ms.w + 4;
-      this.mouthEl.setAttribute('ry', ry.toFixed(2)); this.mouthEl.setAttribute('rx', rx.toFixed(2));
-      this.lipEl.setAttribute('ry', (ry + 1.2).toFixed(2)); this.lipEl.setAttribute('rx', (rx + 1.2).toFixed(2));
-      this.mouthSvg.style.opacity = ms.o < 0.04 ? 0 : 1;
+      this.style.setProperty('--bar', `${off}px`);
+    }
+
+    measureSheet() {
+      // Mobile bottom sheet: Tamsin stands on its top edge, so publish the sheet height as --sheet.
+      if (!this._ro && window.ResizeObserver) {
+        this._ro = new ResizeObserver(() => this.measureSheet());
+        this._ro.observe(this.panel);
+      }
+      const h = this.panel.hidden ? 0 : Math.round(this.panel.getBoundingClientRect().height);
+      this.style.setProperty('--sheet', `${h}px`);
     }
 
     /* ----- push to talk ----- */
@@ -733,8 +975,6 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
     }
     clearHighlight() { if (this.hlEl) this.hlEl.removeAttribute('data-guide-target'); this.hlEl = null; const ring = this.$('ring'); if (ring) ring.dataset.miss = 'true'; }
   }
-
-  const MOUTH_SVG = `<svg class="mouth" viewBox="-30 -15 60 30" aria-hidden="true" style="opacity:0"><ellipse class="m-lip" cx="0" cy="0" rx="8" ry="2" fill="#b4505f"/><ellipse class="m-in" cx="0" cy="0" rx="7" ry="1" fill="#2a0a12"/></svg>`;
 
   customElements.define('afterlife-guide', AfterlifeGuide);
   const ensure = () => { let el = document.querySelector('afterlife-guide'); if (!el) { el = document.createElement('afterlife-guide'); document.body.appendChild(el); } return el; };
