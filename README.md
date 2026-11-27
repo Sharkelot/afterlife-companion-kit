@@ -82,12 +82,12 @@ CI runs Ruff, pytest, a JavaScript syntax check, and Gitleaks secret scanning on
 ```text
 guide-service/
   app.py, publicmode.py        # optional FastAPI reference backend
-  widget/                      # drop-in web component, demo, tours, Krea art
+  widget/                      # sole drop-in web component, demo, tours, art
   tests/                       # backend API and experimental public-mode tests
 tools/concept/
   character.yaml               # editable character definition
   generate_krea2.py            # ComfyUI API workflow helper
-docs/                          # installation, architecture, art, desktop status
+docs/                          # installation, architecture, art, eye tracking, desktop status
 ```
 
 ## License

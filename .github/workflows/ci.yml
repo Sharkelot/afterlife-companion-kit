@@ -34,7 +34,7 @@ jobs:
       - name: Check documentation links
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --no-progress --verbose --accept 200,301,302,401,403,429 ./README.md ./docs/*.md ./widget/README.md ./guide-service/widget/README.md
+          args: --no-progress --verbose --accept 200,301,302,401,403,429 ./README.md ./docs/*.md ./guide-service/widget/README.md
 
   secrets:
     name: Secret scan

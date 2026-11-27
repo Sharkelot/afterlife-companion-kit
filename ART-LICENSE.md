@@ -1,3 +1,5 @@
 # Art license and attribution
 
 The included file `guide-service/widget/avatars/tamsin-rook.png` is a Krea 2-generated image selected as the official Tamsin Rook concept (seed 8202). It is not covered by the repository's MIT software license. Its use remains subject to the applicable Krea terms and any other rights that apply. Verify current terms for your intended use, especially commercial use. Do not infer that the MIT license covers this image, Krea, model weights, or any reference material.
+
+The widget also ships `guide-service/widget/avatars/tamsin/`, derived from that image: expression and lip-sync frames, per-theme tinted copies, and the eye-rig layers in `eyes/` (sclera, iris, pupil, lids, head/body masks). They are (c) Corey, showcase only, and are covered neither by the MIT software license nor by any permission to reuse the character outside this kit. The frames were produced with Krea 2, Qwen-Image-Edit 2511 (Apache-2.0) and BiRefNet (MIT); verify the current terms of each for your intended use.

@@ -1,0 +1,105 @@
+{
+  "source": "afterlife-design/ds/v1/tokens.css",
+  "themes": {
+    "prism-mint": {
+      "dark": {
+        "background": "#080D18",
+        "primary": "#73F5D1",
+        "secondary": "#CA7CD5",
+        "tertiary": "#E01C36",
+        "tint-primary": "#41F1C0",
+        "tint-secondary": "#C361D1",
+        "tint-tertiary": "#E84A5F"
+      },
+      "light": {
+        "background": "#F0F7F4",
+        "primary": "#122F27",
+        "secondary": "#66386C",
+        "tertiary": "#EA1D39",
+        "tint-primary": "#61D1B2",
+        "tint-secondary": "#C461D1",
+        "tint-tertiary": "#EE445B"
+      }
+    },
+    "signal-coral": {
+      "dark": {
+        "background": "#030101",
+        "primary": "#F6B9B3",
+        "secondary": "#5F979E",
+        "tertiary": "#B66014",
+        "tint-primary": "#E95749",
+        "tint-secondary": "#61C5D1",
+        "tint-tertiary": "#EB9447"
+      },
+      "light": {
+        "background": "#FAF3F2",
+        "primary": "#491413",
+        "secondary": "#355356",
+        "tertiary": "#C76A17",
+        "tint-primary": "#D55F5D",
+        "tint-secondary": "#61C7D1",
+        "tint-tertiary": "#EA9448"
+      }
+    },
+    "neon-magenta": {
+      "dark": {
+        "background": "#030103",
+        "primary": "#E9ADE3",
+        "secondary": "#609AA4",
+        "tertiary": "#9B7C16",
+        "tint-primary": "#D45EC8",
+        "tint-secondary": "#61C1D1",
+        "tint-tertiary": "#E6C24C"
+      },
+      "light": {
+        "background": "#F8F3F8",
+        "primary": "#40133E",
+        "secondary": "#355358",
+        "tertiary": "#A28217",
+        "tint-primary": "#D161CC",
+        "tint-secondary": "#61C1D1",
+        "tint-tertiary": "#E6C24C"
+      }
+    },
+    "acid-volt": {
+      "dark": {
+        "background": "#010201",
+        "primary": "#AEDA50",
+        "secondary": "#5E95C3",
+        "tertiary": "#E41C6E",
+        "tint-primary": "#B1DB57",
+        "tint-secondary": "#619ED1",
+        "tint-tertiary": "#E9498B"
+      },
+      "light": {
+        "background": "#F4F6F0",
+        "primary": "#161E08",
+        "secondary": "#284053",
+        "tertiary": "#FB3A7F",
+        "tint-primary": "#A9D45E",
+        "tint-secondary": "#61A0D1",
+        "tint-tertiary": "#FB377D"
+      }
+    },
+    "holo-violet": {
+      "dark": {
+        "background": "#010204",
+        "primary": "#BEC8F6",
+        "secondary": "#6099A7",
+        "tertiary": "#B36E15",
+        "tint-primary": "#4C67E6",
+        "tint-secondary": "#61BBD1",
+        "tint-tertiary": "#EAA348"
+      },
+      "light": {
+        "background": "#F3F5FB",
+        "primary": "#1B1A65",
+        "secondary": "#35525A",
+        "tertiary": "#BB7317",
+        "tint-primary": "#5E5DD5",
+        "tint-secondary": "#61B9D1",
+        "tint-tertiary": "#E9A349"
+      }
+    }
+  }
+}

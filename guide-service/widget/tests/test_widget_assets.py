@@ -4,6 +4,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 WIDGET = Path(__file__).resolve().parents[1]
 
 
@@ -47,7 +49,8 @@ def test_widget_contract_and_themes():
     for style in ("prism-mint", "signal-coral", "neon-magenta", "acid-volt", "holo-violet"):
         assert len(re.findall(rf"'{style}':", src)) == 1
     assert "innerHTML = text" not in src and "innerHTML=text" not in src
-    assert "tamsin-rook.png" in src
+    for marker in ("avatarSrcFor", "swapAvatarImg", "EMO_FRAME", "VIS_FRAME", "scheduleBlink", "avatars/tamsin"):
+        assert marker in src, marker
     assert "liora-" not in src and "option-01" not in src
 
 
@@ -74,3 +77,45 @@ def test_widget_js_parses_when_node_is_available():
     node = shutil.which("node")
     if node:
         subprocess.run([node, "--check", str(WIDGET / "guide.js")], check=True)
+
+
+FRAMES = [
+    *("neutral", "happy", "joy", "smirk", "pout", "laugh", "surprised"),
+    *("blush", "wink", "thinking", "sad", "talk", "blink"),
+    *("m-closed", "m-A", "m-I", "m-E", "m-O", "m-U"),
+]
+TAMSIN = WIDGET / "avatars" / "tamsin"
+
+
+def test_tamsin_frame_list_matches_assets():
+    src = (WIDGET / "guide.js").read_text(encoding="utf-8")
+    m = re.search(r"TAMSIN_FRAMES = \[(.*?)\]", src, re.DOTALL)
+    assert m and re.findall(r"'([\w-]+)'", m.group(1)) == FRAMES
+
+
+def test_tamsin_tint_variants_present():
+    for style in ("prism-mint", "signal-coral", "neon-magenta", "acid-volt", "holo-violet"):
+        for mode in ("dark", "light"):
+            for frame in FRAMES:
+                p = TAMSIN / f"{style}-{mode}" / f"{frame}.webp"
+                assert p.exists() and p.stat().st_size > 5_000, p
+    for frame in FRAMES:
+        assert (TAMSIN / "base" / f"{frame}.webp").stat().st_size > 5_000, frame
+    tokens = json.loads((TAMSIN / "tint-tokens.json").read_text(encoding="utf-8"))["themes"]
+    assert len(tokens) == 5 and all(set(v) == {"dark", "light"} for v in tokens.values())
+
+
+def test_tamsin_frames_are_clean_alpha_cutouts():
+    import importlib.util
+
+    pytest.importorskip("PIL")
+    pytest.importorskip("numpy")
+    spec = importlib.util.spec_from_file_location("check_alpha", WIDGET / "dev" / "check_alpha.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    bad = {
+        str(p.relative_to(TAMSIN)): e
+        for p in sorted(TAMSIN.rglob("*.webp"))
+        if "eyes" not in p.relative_to(TAMSIN).parts and (e := mod.check(p))
+    }
+    assert not bad, bad
