@@ -49,7 +49,8 @@ def test_widget_contract_and_themes():
     for style in ("prism-mint", "signal-coral", "neon-magenta", "acid-volt", "holo-violet"):
         assert len(re.findall(rf"'{style}':", src)) == 1
     assert "innerHTML = text" not in src and "innerHTML=text" not in src
-    for marker in ("avatarSrcFor", "swapAvatarImg", "EMO_FRAME", "VIS_FRAME", "scheduleBlink", "avatars/tamsin"):
+    for marker in ("avatarSrcFor", "swapAvatarImg", "EMO_FRAME", "loadMouth", "applyMouth", "stackOpacities",
+                   "scheduleBlink", "avatars/tamsin"):
         assert marker in src, marker
     assert "liora-" not in src and "option-01" not in src
 
@@ -85,7 +86,6 @@ def test_widget_js_parses_when_node_is_available():
 FRAMES = [
     *("neutral", "happy", "joy", "smirk", "pout", "laugh", "surprised"),
     *("blush", "wink", "thinking", "sad", "talk", "blink"),
-    *("m-closed", "m-A", "m-I", "m-E", "m-O", "m-U"),
 ]
 TAMSIN = WIDGET / "avatars" / "tamsin"
 
@@ -122,3 +122,55 @@ def test_tamsin_frames_are_clean_alpha_cutouts():
         if "eyes" not in p.relative_to(TAMSIN).parts and (e := mod.check(p))
     }
     assert not bad, bad
+
+
+MOUTH = TAMSIN / "mouth"
+VOWELS = ["closed", "A", "I", "E", "O", "U"]
+
+
+def test_lipsync_is_mouth_only_in_guide_js():
+    """Lip-sync never swaps whole face frames: no per-viseme frame names, expressions cross-fade, one mouth layer."""
+    src = (WIDGET / "guide.js").read_text(encoding="utf-8")
+    assert not re.search(r"'m-(closed|A|I|E|O|U)'", src), "whole-face mouth frames are gone"
+    assert "VIS_FRAME" not in src and "mouthFrame" not in src
+    for marker in ("lipsync.js", "mhost", "frIn", "@keyframes frIn", "this.L.smoothVisemes", "visemesFromWords",
+                   "scaleY("):
+        assert marker in src, marker
+
+
+def test_mouth_sprites_present_aligned_and_small():
+    from PIL import Image
+
+    meta = json.loads((MOUTH / "mouth.json").read_text(encoding="utf-8"))
+    assert meta["frame"] == [1000, 1040] and set(meta["sprites"]) == set(VOWELS)
+    sizes = set()
+    for k in VOWELS:
+        im = Image.open(MOUTH / meta["sprites"][k]["file"])
+        assert im.format == "WEBP" and im.mode == "RGBA"
+        sizes.add(im.size)
+        assert (MOUTH / meta["sprites"][k]["file"]).stat().st_size < 12_000
+        a = im.getchannel("A")
+        assert a.getbbox() is not None
+        w, h = im.size
+        # nothing touches the sprite border: transparent frame all round (feathered, never cut by the canvas)
+        assert max(a.crop((0, 0, w, 1)).getextrema()[1], a.crop((0, h - 1, w, h)).getextrema()[1],
+                   a.crop((0, 0, 1, h)).getextrema()[1], a.crop((w - 1, 0, w, h)).getextrema()[1]) == 0, k
+    assert len(sizes) == 1, "all sprites share one canvas / anchor"
+    # one anchor: the mouth centres coincide horizontally to within 1 px of the sprite canvas
+    centres = []
+    for k in VOWELS:
+        bb = Image.open(MOUTH / f"{k}.webp").getchannel("A").point(lambda v: 255 if v > 128 else 0).getbbox()
+        centres.append((bb[0] + bb[2]) / 2)
+    assert max(centres) - min(centres) <= 2.0, centres
+    for ex, p in meta["patches"].items():
+        assert (MOUTH / p["file"]).exists() and (MOUTH / p["file"]).stat().st_size < 12_000, ex
+    for ex in ("neutral", "smirk", "pout", "sad", "talk", "thinking", "happy", "joy", "laugh", "surprised", "blush",
+               "wink"):
+        assert ex in meta["patches"], ex
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_lipsync_node_tests():
+    r = subprocess.run(["node", "--test", str(WIDGET / "tests" / "lipsync.test.js")], capture_output=True, text=True,
+                       check=False)
+    assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-1000:]

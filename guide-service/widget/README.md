@@ -27,7 +27,7 @@ All are optional:
 
 A site may register other avatars before the element is created. An avatar is a folder of transparent WebP frames
 (`<dir>/<style>-<mode>/<frame>.webp`, plus an untinted `<dir>/base/`); the frame names are the ones listed in `TAMSIN_FRAMES`
-in `guide.js` (expressions, `blink`, and the lip-sync mouths `m-closed m-A m-I m-E m-O m-U`):
+in `guide.js` (expressions and `blink`; lip-sync uses the separate mouth sprites in `avatars/tamsin/mouth/`):
 
 ```js
 window.AfterlifeGuide.registerAvatar('my-guide', {
@@ -62,3 +62,10 @@ Feature detection uses `/openapi.json`; calls degrade to a visible mock indicato
 - `POST /v1/stt`: multipart speech recognition.
 
 The API is optional. The static mock demo can be used without a backend. The reference backend and its public-mode controls are experimental; see the repository security warning before connecting a public site.
+
+## Lip-sync (mouth only)
+`lipsync.js` (UMD, tests in `tests/lipsync.test.js`) drives six small mouth sprites (`avatars/tamsin/mouth/{closed,A,I,E,O,U}.webp`,
+anchored by `mouth.json`) that cross-fade over a static expression frame; expression changes cross-fade over 180 ms and each expression has a
+skin patch that hides its own mouth while she talks. Shapes come from server visemes that name vowel shapes, otherwise from the words' letters.
+Smoothing: merge < 50 ms, min hold 70 ms, one-viseme look-ahead, 75 ms ease-in-out cross-fade, audio-RMS envelope (attack 30 ms / release 120 ms)
+scaling openness, scaleY 0.92-1.0 and a 0-1.5 px jaw offset of the mouth layer only. Reduced motion: open/closed only, no scaleY or jaw.
