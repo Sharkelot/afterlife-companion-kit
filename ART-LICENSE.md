@@ -1,0 +1,3 @@
+# Art license and attribution
+
+The included file `guide-service/widget/avatars/tamsin-rook.png` is a Krea 2-generated image selected as the official Tamsin Rook concept (seed 8202). It is not covered by the repository's MIT software license. Its use remains subject to the applicable Krea terms and any other rights that apply. Verify current terms for your intended use, especially commercial use. Do not infer that the MIT license covers this image, Krea, model weights, or any reference material.

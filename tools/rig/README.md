@@ -1,0 +1,3 @@
+# Character rig notes
+
+For Live2D or Inochi2D, split original character art into independently deformable layers: rear hair, front hair, face, eyes (sclera/iris/pupil/highlights), brows, mouth states, neck, torso, jacket panels, each arm/hand, accessories, and foreground effects. Preserve clean overlaps beneath every moving layer; avoid relying on automatic segmentation for production rigging. Export transparent PNG layers with consistent canvas bounds, then rig and test blink, mouth shapes, head turns, and shoulder motion in the target tool. Confirm the art licence permits derivative rig assets.

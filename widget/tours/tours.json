@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "sites": {
+    "default": {
+      "title": "Afterlife High tour",
+      "steps": [
+        {
+          "title": "Top bar",
+          "selector": "header, [role=banner]",
+          "say": "[tsundere] That's the shared top bar. Every Afterlife High site has one, so you can't get lost. Probably.",
+          "say_plain": "This is the shared top bar. It links every Afterlife High site.",
+          "emotion": "tsundere"
+        },
+        {
+          "title": "Main content",
+          "selector": "main, [role=main]",
+          "say": "[happy] This is the main area. Everything you came for lives here.",
+          "say_plain": "This is the main content area.",
+          "emotion": "happy"
+        },
+        {
+          "title": "Navigation",
+          "selector": "nav",
+          "say": "[neutral] Use the navigation to hop between the hub, CRM, TCG, deckbox and wiki.",
+          "say_plain": "Use the navigation to move between the hub, CRM, TCG, deckbox and wiki.",
+          "emotion": "neutral"
+        }
+      ]
+    },
+    "demo": {
+      "title": "Demo tour",
+      "steps": [
+        {
+          "title": "The hub",
+          "selector": "#tile-hub",
+          "say": "[tsundere] Hub first. It has the map. Try not to get lost before the first turn.",
+          "say_plain": "Start at the hub. It has the map of every project.",
+          "emotion": "tsundere"
+        },
+        {
+          "title": "The CRM",
+          "selector": "#tile-crm",
+          "say": "[embarrassed] The CRM is for contacts, companies, deals and activity. Plain and useful. You're welcome.",
+          "say_plain": "The CRM manages contacts, companies, deals and activity.",
+          "emotion": "embarrassed"
+        },
+        {
+          "title": "Deckbox",
+          "selector": "#tile-deckbox",
+          "say": "[happy] Deckbox has downloads and setup notes. Verify the package before you run it, okay?",
+          "say_plain": "Deckbox has downloads and setup notes. Verify packages before running them.",
+          "emotion": "happy"
+        },
+        {
+          "title": "Ask me",
+          "selector": "#panel-ask",
+          "say": "[neutral] And if you're still lost, ask me. Type it, or hold the talk button.",
+          "say_plain": "If you need more help, ask me by typing or using the talk button.",
+          "emotion": "neutral"
+        }
+      ]
+    }
+  }
+}

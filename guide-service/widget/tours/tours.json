@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "sites": {
+    "default": {
+      "title": "Website guide tour",
+      "steps": [
+        {
+          "title": "Welcome",
+          "selector": "header, [role=banner]",
+          "say": "[happy] Welcome. This guide can point out the useful parts of this site.",
+          "say_plain": "Welcome. This guide can point out the useful parts of this site.",
+          "emotion": "happy"
+        },
+        {
+          "title": "Main content",
+          "selector": "main, [role=main]",
+          "say": "[neutral] This is the main content area. Ask me about anything documented here.",
+          "say_plain": "This is the main content area. Ask about information documented here.",
+          "emotion": "neutral"
+        },
+        {
+          "title": "Help and setup",
+          "selector": "#guide-help, [data-guide=help]",
+          "say": "[tsundere] The help section covers setup and common questions. Read it before you get stuck.",
+          "say_plain": "The help section covers setup and common questions.",
+          "emotion": "tsundere"
+        }
+      ]
+    },
+    "demo": {
+      "title": "Companion Kit demo",
+      "steps": [
+        {
+          "title": "Welcome",
+          "selector": "#welcome",
+          "say": "[happy] Welcome to the Companion Kit demo. Everything here is sample content.",
+          "say_plain": "Welcome to the Companion Kit demo. Everything here is sample content.",
+          "emotion": "happy"
+        },
+        {
+          "title": "Features",
+          "selector": "#features",
+          "say": "[neutral] The guide supports tours, text chat, optional speech, and five appearance styles.",
+          "say_plain": "The guide supports tours, text chat, optional speech, and five appearance styles.",
+          "emotion": "neutral"
+        },
+        {
+          "title": "Setup help",
+          "selector": "#guide-help",
+          "say": "[tsundere] Follow the setup notes to connect your own services. Don't expose an unreviewed API to the internet.",
+          "say_plain": "Follow the setup notes to connect your own services. Review security before internet exposure.",
+          "emotion": "tsundere"
+        }
+      ]
+    }
+  }
+}

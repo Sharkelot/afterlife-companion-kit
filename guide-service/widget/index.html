@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d18">
+  <meta name="description" content="A minimal, self-hosted website guide demo for the Afterlife Companion Kit.">
+  <title>Companion Kit — Website Guide Demo</title>
+  <style>
+    :root { color-scheme: dark; font: 16px/1.5 system-ui, sans-serif; background: #080d18; color: #f6f9fb; }
+    body { min-height: 100vh; margin: 0; background: radial-gradient(ellipse at 75% 15%,#14312f,transparent 42%); }
+    header, main { max-width: 60rem; margin: auto; padding: 1.5rem; }
+    header { color: #73f5d1; letter-spacing: .12em; border-bottom: 1px solid #49515a; }
+    main { display: grid; gap: 1rem; }
+    h1, h2 { color: #73f5d1; }
+    section { border: 1px solid #49515a; background: #101b2a; padding: 1.25rem; }
+    a { color: #73f5d1; }
+  </style>
+</head>
+<body>
+  <header>◆ AFTERLIFE COMPANION KIT / DEMO</header>
+  <main>
+    <section id="welcome"><h1>Welcome</h1><p>A sample site showing a drop-in assistant, tours, themes, and optional speech.</p></section>
+    <section id="features"><h2>Guide features</h2><p>Five visual styles, dark/light/automatic mode, text chat, microphone input, captions, and guided tours.</p></section>
+    <section id="guide-help"><h2>Setup and safety</h2><p>Bring your own API and licensed voice assets. Review the security checklist before exposing any service publicly.</p></section>
+  </main>
+  <script src="/widget/guide.js" data-open="1" data-mock="1" data-tour-site="demo"></script>
+</body>
+</html>
