@@ -1,0 +1,372 @@
+{
+ "character": "Tamsin Rook",
+ "source": "concepts-r3/tamsin-krea/TAMSIN-OFFICIAL.png (Krea 2 Turbo + krea2_style_reference, seed 8202)",
+ "canvas": [
+  1792,
+  2688
+ ],
+ "scale_vs_official": 2,
+ "z_order": "0 = bottom",
+ "units": "canvas px; pivot is absolute, pivot_local is inside the cropped PNG",
+ "hierarchy": {
+  "root": [
+   "legs",
+   "torso-jacket"
+  ],
+  "torso": [
+   "neck",
+   "left-arm",
+   "right-cyber-arm"
+  ],
+  "head": [
+   "back-hair",
+   "face-base",
+   "eyes",
+   "brows",
+   "mouth",
+   "front-hair"
+  ]
+ },
+ "layers": [
+  {
+   "name": "back-hair",
+   "z": 0,
+   "file": "layers/00-back-hair.png",
+   "x": 698,
+   "y": 22,
+   "w": 376,
+   "h": 429,
+   "pivot": [
+    904,
+    192
+   ],
+   "pivot_local": [
+    206,
+    170
+   ],
+   "parent": "head",
+   "note": "Back hair mass behind the head (inpainted behind face + fringe)",
+   "yellow_fringe": -0.187
+  },
+  {
+   "name": "legs",
+   "z": 1,
+   "file": "layers/01-legs.png",
+   "x": 532,
+   "y": 950,
+   "w": 780,
+   "h": 1738,
+   "pivot": [
+    896,
+    1048
+   ],
+   "pivot_local": [
+    364,
+    98
+   ],
+   "parent": "root",
+   "note": "Jeans + boots, hip pivot (inpainted under the jacket hem)",
+   "yellow_fringe": -0.012
+  },
+  {
+   "name": "right-cyber-arm",
+   "z": 2,
+   "file": "layers/02-right-cyber-arm.png",
+   "x": 1078,
+   "y": 879,
+   "w": 209,
+   "h": 644,
+   "pivot": [
+    1140,
+    880
+   ],
+   "pivot_local": [
+    62,
+    1
+   ],
+   "parent": "torso",
+   "note": "Cyber arm + spiked cuff + hand (viewer right), shoulder pivot",
+   "yellow_fringe": 0.008
+  },
+  {
+   "name": "torso-jacket",
+   "z": 3,
+   "file": "layers/03-torso-jacket.png",
+   "x": 463,
+   "y": 366,
+   "w": 801,
+   "h": 688,
+   "pivot": [
+    900,
+    1000
+   ],
+   "pivot_local": [
+    437,
+    634
+   ],
+   "parent": "root",
+   "note": "Jacket, crop top, belt, midriff (inpainted under neck/arms)",
+   "yellow_fringe": -0.009
+  },
+  {
+   "name": "left-arm",
+   "z": 4,
+   "file": "layers/04-left-arm.png",
+   "x": 416,
+   "y": 468,
+   "w": 279,
+   "h": 1016,
+   "pivot": [
+    660,
+    536
+   ],
+   "pivot_local": [
+    244,
+    68
+   ],
+   "parent": "torso",
+   "note": "Jacket sleeve + hand (viewer left), shoulder pivot",
+   "yellow_fringe": -0.016
+  },
+  {
+   "name": "neck",
+   "z": 5,
+   "file": "layers/05-neck.png",
+   "x": 818,
+   "y": 408,
+   "w": 201,
+   "h": 99,
+   "pivot": [
+    910,
+    428
+   ],
+   "pivot_local": [
+    92,
+    20
+   ],
+   "parent": "torso",
+   "note": "Neck, choker, collar-bone skin",
+   "yellow_fringe": 0.001
+  },
+  {
+   "name": "face-base",
+   "z": 6,
+   "file": "layers/06-face-base.png",
+   "x": 779,
+   "y": 139,
+   "w": 286,
+   "h": 292,
+   "pivot": [
+    910,
+    410
+   ],
+   "pivot_local": [
+    131,
+    271
+   ],
+   "parent": "head",
+   "note": "Face skin + ears, eyes/brows/mouth removed and inpainted",
+   "yellow_fringe": 0.011
+  },
+  {
+   "name": "eye-L-white",
+   "z": 7,
+   "file": "layers/07-eye-L-white.png",
+   "x": 796,
+   "y": 284,
+   "w": 72,
+   "h": 56,
+   "pivot": [
+    832,
+    314
+   ],
+   "pivot_local": [
+    36,
+    30
+   ],
+   "parent": "head",
+   "note": "Viewer-left eye white / lid shape",
+   "yellow_fringe": -0.071
+  },
+  {
+   "name": "eye-R-white",
+   "z": 8,
+   "file": "layers/08-eye-R-white.png",
+   "x": 909,
+   "y": 252,
+   "w": 82,
+   "h": 54,
+   "pivot": [
+    952,
+    284
+   ],
+   "pivot_local": [
+    43,
+    32
+   ],
+   "parent": "head",
+   "note": "Viewer-right eye white / lid shape",
+   "yellow_fringe": -0.039
+  },
+  {
+   "name": "eye-L-iris",
+   "z": 9,
+   "file": "layers/09-eye-L-iris.png",
+   "x": 796,
+   "y": 284,
+   "w": 62,
+   "h": 39,
+   "pivot": [
+    832,
+    314
+   ],
+   "pivot_local": [
+    36,
+    30
+   ],
+   "parent": "head",
+   "note": "Viewer-left iris (move inside the white; clip to eye-L-white)",
+   "yellow_fringe": -0.077
+  },
+  {
+   "name": "eye-R-iris",
+   "z": 10,
+   "file": "layers/10-eye-R-iris.png",
+   "x": 912,
+   "y": 259,
+   "w": 50,
+   "h": 43,
+   "pivot": [
+    952,
+    284
+   ],
+   "pivot_local": [
+    40,
+    25
+   ],
+   "parent": "head",
+   "note": "Viewer-right iris (move inside the white; clip to eye-R-white)",
+   "yellow_fringe": -0.069
+  },
+  {
+   "name": "eye-L-lid",
+   "z": 11,
+   "file": "layers/11-eye-L-lid.png",
+   "x": 796,
+   "y": 284,
+   "w": 72,
+   "h": 56,
+   "pivot": [
+    832,
+    304
+   ],
+   "pivot_local": [
+    36,
+    20
+   ],
+   "parent": "head",
+   "note": "Viewer-left upper lid + lashes",
+   "yellow_fringe": -0.091
+  },
+  {
+   "name": "eye-R-lid",
+   "z": 12,
+   "file": "layers/12-eye-R-lid.png",
+   "x": 908,
+   "y": 252,
+   "w": 81,
+   "h": 53,
+   "pivot": [
+    952,
+    276
+   ],
+   "pivot_local": [
+    44,
+    24
+   ],
+   "parent": "head",
+   "note": "Viewer-right upper lid + lashes",
+   "yellow_fringe": -0.055
+  },
+  {
+   "name": "brow-L",
+   "z": 13,
+   "file": "layers/13-brow-L.png",
+   "x": 808,
+   "y": 268,
+   "w": 57,
+   "h": 20,
+   "pivot": [
+    834,
+    282
+   ],
+   "pivot_local": [
+    26,
+    14
+   ],
+   "parent": "head",
+   "note": "Viewer-left brow (mostly hidden under the fringe in the art)",
+   "yellow_fringe": -0.085
+  },
+  {
+   "name": "brow-R",
+   "z": 14,
+   "file": "layers/14-brow-R.png",
+   "x": 893,
+   "y": 241,
+   "w": 69,
+   "h": 47,
+   "pivot": [
+    932,
+    260
+   ],
+   "pivot_local": [
+    39,
+    19
+   ],
+   "parent": "head",
+   "note": "Viewer-right brow",
+   "yellow_fringe": -0.035
+  },
+  {
+   "name": "mouth",
+   "z": 15,
+   "file": "layers/15-mouth.png",
+   "x": 861,
+   "y": 358,
+   "w": 87,
+   "h": 48,
+   "pivot": [
+    904,
+    380
+   ],
+   "pivot_local": [
+    43,
+    22
+   ],
+   "parent": "head",
+   "note": "Mouth / lips",
+   "yellow_fringe": -0.003
+  },
+  {
+   "name": "front-hair",
+   "z": 16,
+   "file": "layers/16-front-hair.png",
+   "x": 704,
+   "y": 123,
+   "w": 238,
+   "h": 244,
+   "pivot": [
+    860,
+    160
+   ],
+   "pivot_local": [
+    156,
+    37
+   ],
+   "parent": "head",
+   "note": "Fringe + side lock over the face",
+   "yellow_fringe": -0.171
+  }
+ ]
+}
