@@ -1,0 +1,25 @@
+Frame consistency (HR bust crop 1072x1120, premultiplied RGBA mean abs diff vs neutral, /255)
+Face mask: rig layers face-base, brow-L, brow-R, eye-L-white, eye-R-white, eye-L-iris, eye-R-iris, eye-L-lid, eye-R-lid, mouth, front-hair; closed + filled, dilated 14px, feathered ~10px; core 5.3% / support 7.8% of the crop.
+Outside = outside the mask support (everything the composite does not touch); outside-core also counts the feather+dilate ring.
+
+frame       before(outside)  after(outside)  after(outside-core)  pass
+happy                 8.383          0.0000                0.546  PASS
+joy                   8.834          0.0000                0.505  PASS
+smirk                 8.187          0.0000                0.600  PASS
+pout                  8.348          0.0000                0.666  PASS
+laugh                 5.247          0.0000                0.469  PASS
+surprised            11.389          0.0000                0.586  PASS
+blush                 5.750          0.0000                0.605  PASS
+wink                  9.020          0.0000                0.624  PASS
+thinking              6.579          0.0000                0.397  PASS
+sad                   8.888          0.0000                0.552  PASS
+talk                  9.597          0.0000                0.508  PASS
+blink                 4.259          0.0000                0.374  PASS
+m-closed              3.968          0.0000                0.343  PASS
+m-A                   6.449          0.0000                0.711  PASS
+m-I                   8.733          0.0000                0.544  PASS
+m-E                   3.804          0.0000                0.287  PASS
+m-O                   9.570          0.0000                0.610  PASS
+m-U                   8.798          0.0000                0.606  PASS
+
+Result: PASS - every frame < 1/255 outside the face mask

@@ -1,0 +1,32 @@
+Tamsin rig seam report (HR master, 1792x2688)
+============================================================
+composite vs master over black   : mean abs diff whole canvas 0.0002/255, inside silhouette 0.0007/255, max 4.4
+composite vs master over white   : mean abs diff whole canvas 0.0011/255, inside silhouette 0.0026/255, max 5.0
+composite vs master over magenta : mean abs diff whole canvas 0.0008/255, inside silhouette 0.0019/255, max 5.0
+alpha: max |composite alpha - master alpha| = 0.0196; mean over silhouette 0.00001
+pixels with composite alpha < 1 inside the silhouette (master alpha 1, eroded 1 px): 0
+silhouette interior pixels: 1084013; corner alpha: [0.0, 0.0, 0.0, 0.0]
+
+Move test: shift ONE layer by 4 px in each of 4 directions, recomposite, count interior pixels (master alpha 1, eroded 6 px)
+whose composite alpha < 1 (a gap = background showing through = a seam). Pixels the moved layer simply vacates on the silhouette
+edge (up to 4 px deep) are excluded by the eroded-interior mask.
+  back-hair        gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  legs             gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  right-cyber-arm  gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  torso-jacket     gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  left-arm         gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  neck             gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  face-base        gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  eye-L-white      gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  eye-R-white      gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  eye-L-iris       gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  eye-R-iris       gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  eye-L-lid        gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  eye-R-lid        gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  brow-L           gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  brow-R           gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  mouth            gaps for shifts down/up/right/left: [0, 0, 0, 0]
+  front-hair       gaps for shifts down/up/right/left: [0, 0, 0, 0]
+
+mean abs diff < 2/255 on every background: True; zero interior alpha<1 pixels: True; worst move-test gap count: 0
+PASS
