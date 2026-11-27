@@ -10,6 +10,7 @@
  *   data-persona    tsundere | plain
  *   data-mock       "1" forces the built-in mock API (otherwise feature-detected)
  *   data-open       "1" starts with the panel open
+ *   data-turnstile-site-key  public Turnstile site key (no mock fallback on verification failure)
  */
 (() => {
   'use strict';
@@ -588,12 +589,13 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       })();
       return this.detected;
     }
-    updateMock() { this.mock = SD.mock === '1' || this.caps.chat === false || this.caps.tts === false; this.syncButtons(); }
+    updateMock() { this.mock = !SD.turnstileSiteKey && SD.mock === '1'; this.syncButtons(); }
 
     /* ----- chat ----- */
     async ask(message) {
       this.ensureCtx(); this.stopSpeech(); this.stopRec(true);
       await this.detect();
+      if (SD.turnstileSiteKey) { this.caps.chat = true; this.caps.chatStream = true; this.updateMock(); }
       this.chatAbort && this.chatAbort.abort();
       const ac = this.chatAbort = new AbortController();
       this.setStatus('thinking'); this.setSay('\u2026', 'neutral', message);
@@ -606,6 +608,7 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
         if (this.caps.chat !== false && this.caps.chatStream !== false) {
           try { await this.streamChat(message, ac.signal, onText, onSentence); done = true; this.caps.chat = true; } catch (e) {
             if (e.name === 'AbortError') throw e;
+            if (SD.turnstileSiteKey) throw e;
             if (e.status === 404 || e.status === 405 || e.status === 501 || e.status === undefined) { this.caps.chatStream = false; } else if (e.status === 429) { throw e; } else { this.caps.chatStream = false; }
           }
         }
@@ -618,6 +621,7 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
         }
         if (!done) {
           this.updateMock();
+          if (!this.mock) throw new Error('chat unavailable');
           const lines = mockReply(message, this.prefs.persona);
           for (const l of lines) { const clean = stripTags(l); const m = l.match(/^\[([a-z]+)\]/i); await this.reveal(clean + ' ', onText, ac.signal, true); onSentence(clean, m ? m[1] : 'neutral'); }
         } else if (!sentCount && full.trim()) sentences(stripTags(full)).forEach((s) => onSentence(s, emotion));
@@ -638,9 +642,40 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
       for (const w of words) { acc += w; onText(w); if (/\S/.test(w)) await sleep(25, signal); }
     }
 
+    async getTurnstileToken(signal) {
+      if (!SD.turnstileSiteKey) return undefined;
+      if (!window.turnstile) {
+        if (!window.__ahgTurnstileScript) window.__ahgTurnstileScript = new Promise((resolve, reject) => {
+          const tag = document.createElement('script'); tag.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+          tag.async = true; tag.onload = resolve; tag.onerror = reject; document.head.appendChild(tag);
+        });
+        await window.__ahgTurnstileScript;
+      }
+      if (!window.turnstile) throw new Error('Turnstile unavailable');
+      const mount = document.createElement('div'); this.shadowRoot.appendChild(mount);
+      return new Promise((resolve, reject) => {
+        let widgetId, settled = false;
+        const finish = (token, error) => {
+          if (settled) return; settled = true; clearTimeout(timer);
+          signal && signal.removeEventListener('abort', onAbort);
+          if (widgetId !== undefined) window.turnstile.remove(widgetId);
+          mount.remove(); if (error) reject(error); else resolve(token);
+        };
+        const onAbort = () => finish(null, new DOMException('aborted', 'AbortError'));
+        const timer = setTimeout(() => finish(null, new Error('Turnstile timed out')), 15000);
+        signal && signal.addEventListener('abort', onAbort, { once: true });
+        try {
+          widgetId = window.turnstile.render(mount, { sitekey: SD.turnstileSiteKey, execution: 'execute',
+            appearance: 'interaction-only', callback: (token) => finish(token),
+            'error-callback': () => finish(null, new Error('Turnstile failed')) });
+          window.turnstile.execute(widgetId);
+        } catch (e) { finish(null, e); }
+      });
+    }
     async streamChat(message, signal, onText, onSentence) {
+      const turnstile = await this.getTurnstileToken(signal);
       const r = await fetch(`${API}/api/chat/stream`, { method: 'POST', signal, headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({ message, plain: this.prefs.persona === 'plain', session_id: this.sessionId }) });
+        body: JSON.stringify({ message, plain: this.prefs.persona === 'plain', session_id: this.sessionId, turnstile }) });
       if (!r.ok || !r.body) { const er = new Error('chat stream ' + r.status); er.status = r.status; throw er; }
       const rd = r.body.getReader(); const dec = new TextDecoder(); let buf = ''; let finished = false;
       const handle = (raw) => {
@@ -657,7 +692,7 @@ button[data-rec=true] .rec{display:inline-block;animation:pulse 1s infinite}
         let i; while ((i = buf.search(/\r?\n\r?\n/)) >= 0) { handle(buf.slice(0, i)); buf = buf.slice(i).replace(/^\r?\n\r?\n/, ''); }
       }
       if (buf.trim()) handle(buf);
-      if (!finished && !buf) { /* stream closed without done: treat as complete */ }
+      if (!finished) throw new Error('chat stream incomplete');
     }
 
     /* ----- audio ----- */

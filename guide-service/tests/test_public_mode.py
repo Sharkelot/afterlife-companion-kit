@@ -207,6 +207,7 @@ def test_turnstile_disabled_until_configured(monkeypatch):
 
 
 def test_turnstile_enforced_when_configured(monkeypatch):
+    monkeypatch.setattr(module.guard, "_classifier", lambda text: 0.0)
     monkeypatch.setattr(module.publicmode, "PUBLIC_MODE", True)
     monkeypatch.setattr(module.publicmode, "TURNSTILE_SITE_KEY", "sitekey")
     monkeypatch.setattr(module.publicmode, "TURNSTILE_SECRET", "secret")
@@ -224,7 +225,7 @@ def test_turnstile_enforced_when_configured(monkeypatch):
     monkeypatch.setattr(module.httpx, "stream", fail_stream)
     response = client.post("/api/chat/stream", json={**payload, "turnstile": "tok"})
     assert response.status_code == 200
-    assert '"type": "error"' in response.text
+    assert module.guard.REFUSAL in response.text
 
 
 # --- Rate / concurrency ----------------------------------------------------------
@@ -273,6 +274,7 @@ def test_public_chat_system_hardened(monkeypatch):
 
 
 def test_stream_sentence_carries_tts_token_in_public_mode(monkeypatch):
+    monkeypatch.setattr(module.guard, "_classifier", lambda text: 0.0)
     monkeypatch.setattr(module.publicmode, "PUBLIC_MODE", True)
     monkeypatch.setattr(module.publicmode, "SECRET_KEY", "test-secret")
     monkeypatch.setattr(module.publicmode, "TURNSTILE_SITE_KEY", "site")
