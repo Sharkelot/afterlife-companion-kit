@@ -318,7 +318,8 @@ def public_headers() -> dict[str, str]:
     if PUBLIC_MODE:
         origins = " ".join(ALLOWED_ORIGINS)
         headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+            "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; "
+            "frame-src https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; "
             f"connect-src 'self' {origins}; media-src 'self'; frame-ancestors 'self' {origins}"
         )
         headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -327,7 +328,8 @@ def public_headers() -> dict[str, str]:
 
 def privacy_log(method: str, path: str, status: int, client_ip: str | None) -> None:
     """Structured access log without query strings, bodies, or tokens."""
-    clean_path = path.split("?", 1)[0]
+    # Unknown paths can themselves contain emails, tokens or phone numbers.
+    clean_path = path if path in {"/api/chat/stream", "/api/chat", "/admin/guard", "/health", "/v1/tts"} else "<other>"
     _log.info("method=%s path=%s status=%d public=%s", method, clean_path, status, "1" if PUBLIC_MODE else "0")
 
 

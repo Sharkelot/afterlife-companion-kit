@@ -57,8 +57,8 @@ def test_chat_sends_persona_and_filters_output(monkeypatch):
     def fake_post(url, json, headers=None, timeout=None):
         assert url == module.CHAT_URL
         assert json["model"] == module.CHAT_MODEL
-        assert json["max_tokens"] == 300
-        assert "Site map" in json["messages"][0]["content"]
+        assert json["max_tokens"] == module.CHAT_MAX_TOKENS
+        assert "Signed destinations" in json["messages"][0]["content"]
         return Upstream()
 
     monkeypatch.setattr(module.httpx, "post", fake_post)
@@ -74,6 +74,7 @@ def test_chat_rate_limit(monkeypatch):
 
 
 def test_stream_chat_emits_sentence_sse_with_same_safety(monkeypatch):
+    monkeypatch.setattr(module.guard, "_classifier", lambda text: 0.0)
     class Upstream:
         def __enter__(self):
             return self
