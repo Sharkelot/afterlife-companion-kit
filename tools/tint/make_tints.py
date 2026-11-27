@@ -65,7 +65,7 @@ def hex2rgb(h: str) -> tuple[float, float, float]:
 
 
 def rgb2hex(c) -> str:
-    return "#%02X%02X%02X" % tuple(int(round(max(0, min(1, v)) * 255)) for v in c)
+    return "#{:02X}{:02X}{:02X}".format(*tuple(int(round(max(0, min(1, v)) * 255)) for v in c))
 
 
 def read_tokens() -> dict:
@@ -140,7 +140,7 @@ def clean(mask: np.ndarray, min_px: int) -> np.ndarray:
     lab = np.zeros((h, w), np.int32)
     keep = np.zeros((h, w), bool)
     n = 0
-    for y, x in zip(*np.nonzero(core)):
+    for y, x in zip(*np.nonzero(core), strict=False):
         if lab[y, x]:
             continue
         n += 1
@@ -156,7 +156,7 @@ def clean(mask: np.ndarray, min_px: int) -> np.ndarray:
                         pts.append((ny, nx))
                         q.append((ny, nx))
         if len(pts) >= min_px:
-            ys, xs = zip(*pts)
+            ys, xs = zip(*pts, strict=False)
             keep[ys, xs] = True
     return mask * _morph(keep, 5, True)
 

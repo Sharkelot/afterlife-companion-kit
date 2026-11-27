@@ -59,7 +59,9 @@ def test_public_source_has_no_private_source_identifiers_or_addresses():
     exts = {".py", ".js", ".json", ".md", ".yaml", ".yml", ".toml", ".html", ".txt"}
     forbidden = ("afterlifehigh" + ".com", "/home/" + "coreys/", "127.0.0." + "1", "Liora" + " Senn", "Qwen3" + ".8")
     for p in root.rglob("*"):
-        if p.resolve() == Path(__file__).resolve() or skip.intersection(p.parts) or not p.is_file() or p.suffix.lower() not in exts:
+        if p.resolve() == Path(__file__).resolve():
+            continue
+        if skip.intersection(p.parts) or not p.is_file() or p.suffix.lower() not in exts:
             continue
         if p.stat().st_size > 2_000_000:
             continue

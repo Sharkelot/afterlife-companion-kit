@@ -50,7 +50,10 @@ def upload(name: str = UPLOAD_NAME, data: bytes | None = None) -> None:
     body = b"".join([
         f"--{boundary}\r\nContent-Disposition: form-data; name=\"image\"; filename=\"{name}\"\r\n"
         "Content-Type: image/png\r\n\r\n".encode(), data if data is not None else SRC.read_bytes(),
-        f"\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"overwrite\"\r\n\r\ntrue\r\n--{boundary}--\r\n".encode(),
+        (
+            f"\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"overwrite\"\r\n"
+            f"\r\ntrue\r\n--{boundary}--\r\n"
+        ).encode(),
     ])
     req("/upload/image", body, {"Content-Type": f"multipart/form-data; boundary={boundary}"})
 
@@ -102,9 +105,12 @@ def main() -> int:
                 return 1
             break
         time.sleep(2)
-    for node, out in h[pid]["outputs"].items():
+    for _node, out in h[pid]["outputs"].items():
         for im in out.get("images", []):
-            data = req("/view?" + "filename={filename}&subfolder={subfolder}&type={type}".format(**{k: im[k].replace(" ", "%20") for k in ("filename", "subfolder", "type")}))
+            query = "filename={filename}&subfolder={subfolder}&type={type}".format(
+                **{key: im[key].replace(" ", "%20") for key in ("filename", "subfolder", "type")}
+            )
+            data = req("/view?" + query)
             name = im["filename"].split("_0")[0].split("/")[-1]
             name = name.rsplit("_", 1)[0] if name[-5:-1].isdigit() else name
             (OUT / f"{name}.png").write_bytes(data)
