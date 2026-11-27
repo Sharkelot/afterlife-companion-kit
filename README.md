@@ -4,6 +4,19 @@ A self-hostable kit for adding a lightweight, character-led guide to a website. 
 
 > **Release scope (v0.1.0):** the website widget and local demo are available. The backend is an experimental self-hosted reference and is **not ready to expose to the public internet** without a separate security review. No model weights, voice recordings, credentials, or private endpoints are bundled. Desktop companion source is not included; see [the desktop status](docs/desktop-companion.md).
 
+## Quick start: local install (about 10 minutes)
+
+Requires Python 3.11+, `venv`, `curl`, and a systemd user session. The installer creates a virtual environment, writes a localhost-only systemd user service, and enables it. It does not download model weights by default.
+
+```sh
+./install.sh
+# edit ~/.config/afterlife-guide/guide.env with your local OpenAI-compatible endpoint
+systemctl --user restart afterlife-guide.service
+curl http://localhost:8897/health
+```
+
+For an optional model file, pass `GUIDE_MODEL_URL`, `GUIDE_MODEL_SHA256` (64 hex characters, independently verified against the publisher), and optionally `GUIDE_MODEL_FILENAME` to the installer. It downloads to a temporary file and refuses installation unless SHA-256 matches. This generic hook deliberately does not invent upstream URLs or hashes; configure the exact artifact you are licensed to use. The browser-only demo remains available with `python3 -m http.server 8912 --directory guide-service`.
+
 ## Quick start: widget demo
 
 Requires Python 3.11+ for the static server; Node.js is optional and only needed for the JavaScript syntax check.
